@@ -1,0 +1,50 @@
+
+# macOS
+.DS_Store
+
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# ASP.NET Core Secret Manager
+secrets.json
+*.secret.json
+
+# dotenv
+.env
+
+# Docker
+**/docker-compose.override.yml
+**/docker-compose.*.yml
+**/Dockerfile.*
+**/*.dockerfile
+**/docker-compose-generated/
+
+# Entity Framework (if using Migrations)
+**/Migrations/
+
+# Static web assets (wwwroot cache)
+**/wwwroot/css/
+**/wwwroot/js/
+**/wwwroot/lib/
+
+# Node/npm (if using for tooling like Tailwind, Sass, etc.)
+node_modules/
+package-lock.json
+npm-debug.log
+yarn.lock
+
+# Logs
+*.log
+
+# Local test results
+TestResults/
