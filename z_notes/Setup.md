@@ -22,9 +22,13 @@ dotnet sln add Shared
 ```
 
 ```zsh
-// Add Packages
+// Add Packages WebApi
 dotnet add package Okta.AspNetCore \
 && dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0\
 && dotnet add package Microsoft.EntityFrameworkCore.SqlServer \
 && dotnet add package Microsoft.EntityFrameworkCore.Design
+
+// AppHost
+dotnet add package Aspire.Hosting.SqlServer
+dotnet ef migrations add InitialCreate --project WebApi
 ```

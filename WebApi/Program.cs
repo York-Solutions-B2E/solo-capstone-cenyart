@@ -1,9 +1,14 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Shared.Interfaces;
-using Services;
+using WebApi.Services;
+using WebApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<NoteContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
@@ -86,6 +91,14 @@ builder.Services.AddAuthorizationBuilder()
     });
 
 var app = builder.Build();
+
+// Apply migrations and seed data
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<NoteContext>();
+    db.Database.Migrate();
+    DbSeeder.Seed(db);
+}
 
 // Swagger
 if (app.Environment.IsDevelopment())

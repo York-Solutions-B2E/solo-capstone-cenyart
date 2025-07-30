@@ -2,7 +2,7 @@ using System.Text.Json;
 using Shared.Interfaces;
 using Shared.Dtos;
 
-namespace Services;
+namespace WebApi.Services;
 
 public class TokenTestService : ITokenTestService
 {
