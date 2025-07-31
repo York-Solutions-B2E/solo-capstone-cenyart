@@ -62,4 +62,5 @@ builder.Build().Run();
 
 ```zsh
 dotnet run --project AppHost
+dotnet build WebApi
 ```

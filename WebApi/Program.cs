@@ -4,10 +4,12 @@ using Microsoft.IdentityModel.Tokens;
 using Shared.Interfaces;
 using WebApi.Services;
 using WebApi.Data;
+using WebApi.Data.Repositories.Interfaces;
+using WebApi.Data.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<NoteContext>(options =>
+builder.Services.AddDbContext<CommunicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
 
 // Add service defaults & Aspire client integrations.
@@ -26,6 +28,14 @@ if (builder.Environment.IsDevelopment())
 // Okta Token Service (for testing)
 builder.Services.AddHttpClient<ITokenTestService, TokenTestService>();
 builder.Services.AddScoped<ITokenTestService, TokenTestService>();
+
+// Repository pattern
+builder.Services.AddScoped<ICommunicationTypeRepository, CommunicationTypeRepository>();
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
+// Business services
+builder.Services.AddScoped<ICommunicationTypeService, CommunicationTypeService>();
+builder.Services.AddScoped<IStatusTaxonomyService, StatusTaxonomyService>();
 
 builder.Services.AddControllers();
 
@@ -95,9 +105,9 @@ var app = builder.Build();
 // Apply migrations and seed data
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<NoteContext>();
+    var db = scope.ServiceProvider.GetRequiredService<CommunicationDbContext>();
     db.Database.Migrate();
-    DbSeeder.Seed(db);
+    await DatabaseSeeder.SeedAsync(db);
 }
 
 // Swagger

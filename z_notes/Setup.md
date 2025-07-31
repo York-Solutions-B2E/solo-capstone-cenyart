@@ -32,3 +32,18 @@ dotnet add package Okta.AspNetCore \
 dotnet add package Aspire.Hosting.SqlServer
 dotnet ef migrations add InitialCreate --project WebApi
 ```
+
+```bash
+# Add initial migration
+dotnet ef migrations add InitialCreate
+
+# Update database
+dotnet ef database update
+
+# Add subsequent migrations (example)
+dotnet ef migrations add AddCommunicationTypeStatuses
+dotnet ef database update
+
+# For production deployment
+dotnet ef database update --connection "YourProductionConnectionString"
+```
