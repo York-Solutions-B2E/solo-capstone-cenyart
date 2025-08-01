@@ -1,0 +1,26 @@
+﻿@inherits LayoutComponentBase
+
+<MudDialogProvider />
+<MudSnackbarProvider maxdisplayedsnackbars="3" preventduplicates="true">
+    <MudLayout>
+
+        <MudAppBar color="Color.Primary" elevation="4">
+            <MudIconButton icon="@Icons.Material.Filled.Menu" color="Color.Inherit" edge="Edge.Start" onclick="ToggleDrawer" />
+            <MudText typo="Typo.h6">Communication Lifecycle</MudText>
+        </MudAppBar>
+
+        <MudDrawer open="@_drawerOpen" clipmode="DrawerClipMode.Always" variant="DrawerVariant.Mini">
+            <NavMenu />
+        </MudDrawer>
+
+        <MudMainContent>
+            @Body
+        </MudMainContent>
+
+    </MudLayout>
+</MudSnackbarProvider>
+
+@code {
+    private bool _drawerOpen = true;
+    void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+}

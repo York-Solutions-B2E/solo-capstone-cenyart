@@ -1,122 +1,77 @@
 using Microsoft.EntityFrameworkCore;
-using WebApi.Data.Entities;
 
 namespace WebApi.Data;
 public class CommunicationDbContext(DbContextOptions<CommunicationDbContext> options) : DbContext(options)
 {
-    public DbSet<GlobalStatus> GlobalStatuses { get; set; }
-    public DbSet<CommunicationType> CommunicationTypes { get; set; }
-    public DbSet<CommunicationTypeStatus> CommunicationTypeStatuses { get; set; }
-    public DbSet<Communication> Communications { get; set; }
+    public DbSet<GlobalStatus>               GlobalStatuses             { get; set; }
+    public DbSet<CommunicationType>          CommunicationTypes         { get; set; }
+    public DbSet<CommunicationTypeStatus>    CommunicationTypeStatuses  { get; set; }
+    public DbSet<Communication>              Communications             { get; set; }
     public DbSet<CommunicationStatusHistory> CommunicationStatusHistory { get; set; }
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    protected override void OnModelCreating(ModelBuilder model)
     {
-        base.OnModelCreating(modelBuilder);
+        base.OnModelCreating(model);
 
-        // GlobalStatus configuration
-        modelBuilder.Entity<GlobalStatus>(entity =>
+        // Soft-delete filters
+        model.Entity<GlobalStatus>().HasQueryFilter(e => e.IsActive);
+        model.Entity<CommunicationType>().HasQueryFilter(e => e.IsActive);
+        model.Entity<CommunicationTypeStatus>().HasQueryFilter(e => e.IsActive);
+        model.Entity<Communication>().HasQueryFilter(e => e.IsActive);
+        model.Entity<CommunicationStatusHistory>().HasQueryFilter(e => e.IsActive);
+
+        // GlobalStatus
+        model.Entity<GlobalStatus>(e =>
         {
-            entity.HasKey(e => e.StatusCode);
-            entity.Property(e => e.StatusCode).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.DisplayName).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.Phase).HasMaxLength(20).IsRequired()
-                .HasConversion<string>(); // Enum to string conversion
-            entity.Property(e => e.SortOrder).IsRequired();
-            entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
-            entity.Property(e => e.CreatedUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-
-            entity.HasIndex(e => new { e.Phase, e.SortOrder });
-            entity.HasIndex(e => e.IsActive);
+            e.HasKey(x => x.StatusCode);
+            e.HasMany(x => x.CommunicationTypeStatuses)
+             .WithOne(cts => cts.Status)
+             .HasForeignKey(cts => cts.StatusCode)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // CommunicationType configuration
-        modelBuilder.Entity<CommunicationType>(entity =>
+        // CommunicationType
+        model.Entity<CommunicationType>(e =>
         {
-            entity.HasKey(e => e.TypeCode);
-            entity.Property(e => e.TypeCode).HasMaxLength(20).IsRequired();
-            entity.Property(e => e.DisplayName).HasMaxLength(100).IsRequired();
-            entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
-            entity.Property(e => e.CreatedUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-            entity.Property(e => e.ModifiedUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-
-            entity.HasIndex(e => e.IsActive);
-            entity.HasIndex(e => e.DisplayName);
+            e.HasKey(x => x.TypeCode);
+            e.HasMany(x => x.ValidStatuses)
+             .WithOne(cts => cts.CommunicationType)
+             .HasForeignKey(cts => cts.TypeCode)
+             .OnDelete(DeleteBehavior.Cascade);
+            e.HasMany(x => x.Communications)
+             .WithOne(c => c.CommunicationType)
+             .HasForeignKey(c => c.TypeCode)
+             .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // CommunicationTypeStatus configuration
-        modelBuilder.Entity<CommunicationTypeStatus>(entity =>
+        // CommunicationTypeStatus
+        model.Entity<CommunicationTypeStatus>(e =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.TypeCode).HasMaxLength(20).IsRequired();
-            entity.Property(e => e.StatusCode).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.Description).HasMaxLength(500);
-            entity.Property(e => e.SortOrder).IsRequired().HasDefaultValue(0);
-            entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
-
-            entity.HasOne(e => e.CommunicationType)
-                .WithMany(ct => ct.ValidStatuses)
-                .HasForeignKey(e => e.TypeCode)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.GlobalStatus)
-                .WithMany()
-                .HasForeignKey(e => e.StatusCode)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(e => new { e.TypeCode, e.StatusCode }).IsUnique();
-            entity.HasIndex(e => e.IsActive);
+            e.HasKey(x => x.Id);
         });
 
-        // Communication configuration
-        modelBuilder.Entity<Communication>(entity =>
+        // Communication
+        model.Entity<Communication>(e =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasDefaultValueSql("NEWID()");
-            entity.Property(e => e.Title).HasMaxLength(200).IsRequired();
-            entity.Property(e => e.TypeCode).HasMaxLength(20).IsRequired();
-            entity.Property(e => e.CurrentStatus).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.SourceFileUrl).HasMaxLength(500);
-            entity.Property(e => e.CreatedUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-            entity.Property(e => e.LastUpdatedUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-
-            entity.HasOne(e => e.CommunicationType)
-                .WithMany()
-                .HasForeignKey(e => e.TypeCode)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.CurrentStatusNavigation)
-                .WithMany()
-                .HasForeignKey(e => e.CurrentStatus)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(e => e.TypeCode);
-            entity.HasIndex(e => e.CurrentStatus);
-            entity.HasIndex(e => e.LastUpdatedUtc);
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.CurrentStatusNavigation)
+             .WithMany()
+             .HasForeignKey(x => x.CurrentStatus)
+             .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.StatusHistory)
+             .WithOne(h => h.Communication)
+             .HasForeignKey(h => h.CommunicationId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // CommunicationStatusHistory configuration
-        modelBuilder.Entity<CommunicationStatusHistory>(entity =>
+        // CommunicationStatusHistory
+        model.Entity<CommunicationStatusHistory>(e =>
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.CommunicationId).IsRequired();
-            entity.Property(e => e.StatusCode).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.OccurredUtc).IsRequired().HasDefaultValueSql("GETUTCDATE()");
-            entity.Property(e => e.EventData).HasColumnType("NVARCHAR(MAX)");
-
-            entity.HasOne(e => e.Communication)
-                .WithMany(c => c.StatusHistory)
-                .HasForeignKey(e => e.CommunicationId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.Status)
-                .WithMany()
-                .HasForeignKey(e => e.StatusCode)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(e => e.CommunicationId);
-            entity.HasIndex(e => e.OccurredUtc);
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Status)
+             .WithMany()
+             .HasForeignKey(x => x.StatusCode)
+             .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

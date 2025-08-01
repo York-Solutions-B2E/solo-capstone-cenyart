@@ -1,0 +1,51 @@
+@page "/simulator"
+@inject ICommunicationService CommSvc
+@inject IEventService EventSvc
+
+<MudPaper Class="pa-4">
+    <MudGrid>
+        <MudItem xs="12" sm="6">
+            <MudSelect T="Guid" Label="Select Communication" @bind-Value="selected">
+                @foreach (var c in comms)
+                {
+                    <MudSelectItem Value="@c.Id">@c.Title</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudSelect T="string" Label="Select Event" @bind-Value="chosen">
+                @foreach (var e in events)
+                {
+                    <MudSelectItem Value="@e">@e</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="Send">Publish</MudButton>
+</MudPaper>
+
+@code {
+    List<CommunicationDto> comms = [];
+    Guid selected;
+    string chosen = "IdCardPrinted";
+    string[] events = { "IdCardPrinted", "IdCardShipped", "IdCardDelivered" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        comms = await CommSvc.GetAllAsync();
+        selected = comms.FirstOrDefault()?.Id ?? Guid.Empty;
+    }
+
+    async Task Send()
+    {
+        await EventSvc.PublishAsync(new EventDto
+        {
+            CommunicationId = selected,
+            EventType = chosen,
+            TimestampUtc = DateTime.UtcNow
+        });
+
+        comms = await CommSvc.GetAllAsync(); // optional refresh
+    }
+}

@@ -4,8 +4,6 @@ using Microsoft.IdentityModel.Tokens;
 using Shared.Interfaces;
 using WebApi.Services;
 using WebApi.Data;
-using WebApi.Data.Repositories.Interfaces;
-using WebApi.Data.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,13 +27,10 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddHttpClient<ITokenTestService, TokenTestService>();
 builder.Services.AddScoped<ITokenTestService, TokenTestService>();
 
-// Repository pattern
-builder.Services.AddScoped<ICommunicationTypeRepository, CommunicationTypeRepository>();
-builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
-
-// Business services
-builder.Services.AddScoped<ICommunicationTypeService, CommunicationTypeService>();
-builder.Services.AddScoped<IStatusTaxonomyService, StatusTaxonomyService>();
+// DI
+builder.Services
+    .AddScoped<ICommunicationService, CommunicationService>()
+    .AddScoped<IEventService, EventService>();
 
 builder.Services.AddControllers();
 

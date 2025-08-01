@@ -1,17 +1,8 @@
-using System.ComponentModel.DataAnnotations;
 
-namespace Shared.Dtos;
+namespace Shared.DTOs;
 
 public class CreateCommunicationDto
 {
-    [Required, StringLength(20)]
-    public string TypeCode { get; set; } = string.Empty;
-    
-    [Required, StringLength(100)]
-    public string DisplayName { get; set; } = string.Empty;
-    
-    [StringLength(500)]
-    public string? Description { get; set; }
-    
-    public List<string> ValidStatusCodes { get; set; } = [];
+    public string Title { get; set; } = "";
+    public string TypeCode { get; set; } = "";
 }

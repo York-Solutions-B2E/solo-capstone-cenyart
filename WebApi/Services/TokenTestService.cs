@@ -4,18 +4,11 @@ using Shared.Dtos;
 
 namespace WebApi.Services;
 
-public class TokenTestService : ITokenTestService
+public class TokenTestService(HttpClient httpClient, IConfiguration configuration, ILogger<TokenTestService> logger) : ITokenTestService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<TokenTestService> _logger;
-
-    public TokenTestService(HttpClient httpClient, IConfiguration configuration, ILogger<TokenTestService> logger)
-    {
-        _httpClient = httpClient;
-        _configuration = configuration;
-        _logger = logger;
-    }
+    private readonly HttpClient _httpClient = httpClient;
+    private readonly IConfiguration _configuration = configuration;
+    private readonly ILogger<TokenTestService> _logger = logger;
 
     public async Task<TokenTestResponse?> GetClientCredentialsTokenAsync()
     {

@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Shared.Enums;
-using WebApi.Data.Entities;
 
 namespace WebApi.Data;
 
@@ -9,9 +8,8 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(CommunicationDbContext context)
     {
         if (await context.GlobalStatuses.AnyAsync())
-            return; // Already seeded
+            return;
 
-        // Seed Global Statuses
         var globalStatuses = new List<GlobalStatus>
         {
             new() { StatusCode = "ReadyForRelease", DisplayName = "Ready for Release", Phase = StatusPhase.Creation, SortOrder = 1 },
@@ -29,22 +27,18 @@ public static class DatabaseSeeder
             new() { StatusCode = "Expired", DisplayName = "Expired", Phase = StatusPhase.Logistics, SortOrder = 13 },
             new() { StatusCode = "Archived", DisplayName = "Archived", Phase = StatusPhase.Logistics, SortOrder = 14 }
         };
-
         context.GlobalStatuses.AddRange(globalStatuses);
         await context.SaveChangesAsync();
 
-        // Seed Communication Types
         var communicationTypes = new List<CommunicationType>
         {
             new() { TypeCode = "EOB", DisplayName = "Explanation of Benefits", Description = "Documents explaining insurance claim processing" },
             new() { TypeCode = "EOP", DisplayName = "Explanation of Payment", Description = "Documents detailing payment information" },
             new() { TypeCode = "ID_CARD", DisplayName = "ID Card", Description = "Member identification cards" }
         };
-
         context.CommunicationTypes.AddRange(communicationTypes);
         await context.SaveChangesAsync();
 
-        // Seed default status mappings for each type
         await SeedDefaultStatusMappings(context);
     }
 
@@ -52,25 +46,25 @@ public static class DatabaseSeeder
     {
         var eobStatuses = new List<CommunicationTypeStatus>
         {
-            new() { TypeCode = "EOB", StatusCode = "ReadyForRelease", Description = "EOB ready for release", SortOrder = 1 },
-            new() { TypeCode = "EOB", StatusCode = "Released", Description = "EOB has been released", SortOrder = 2 },
-            new() { TypeCode = "EOB", StatusCode = "QueuedForPrinting", Description = "EOB queued for printing", SortOrder = 3 },
-            new() { TypeCode = "EOB", StatusCode = "Printed", Description = "EOB has been printed", SortOrder = 4 },
-            new() { TypeCode = "EOB", StatusCode = "Shipped", Description = "EOB has been shipped", SortOrder = 5 },
-            new() { TypeCode = "EOB", StatusCode = "Delivered", Description = "EOB has been delivered", SortOrder = 6 }
+            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "ReadyForRelease", Description = "EOB ready for release", SortOrder = 1 },
+            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Released", Description = "EOB has been released", SortOrder = 2 },
+            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "QueuedForPrinting", Description = "EOB queued for printing", SortOrder = 3 },
+            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Printed", Description = "EOB has been printed", SortOrder = 4 },
+            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Shipped", Description = "EOB has been shipped", SortOrder = 5 },
+            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Delivered", Description = "EOB has been delivered", SortOrder = 6 }
         };
 
         var idCardStatuses = new List<CommunicationTypeStatus>
         {
-            new() { TypeCode = "ID_CARD", StatusCode = "ReadyForRelease", Description = "ID Card ready for production", SortOrder = 1 },
-            new() { TypeCode = "ID_CARD", StatusCode = "Released", Description = "ID Card released to production", SortOrder = 2 },
-            new() { TypeCode = "ID_CARD", StatusCode = "QueuedForPrinting", Description = "ID Card queued for printing", SortOrder = 3 },
-            new() { TypeCode = "ID_CARD", StatusCode = "Printed", Description = "ID Card has been printed", SortOrder = 4 },
-            new() { TypeCode = "ID_CARD", StatusCode = "Inserted", Description = "ID Card has been inserted into envelope", SortOrder = 5 },
-            new() { TypeCode = "ID_CARD", StatusCode = "WarehouseReady", Description = "ID Card ready at warehouse", SortOrder = 6 },
-            new() { TypeCode = "ID_CARD", StatusCode = "Shipped", Description = "ID Card has been shipped", SortOrder = 7 },
-            new() { TypeCode = "ID_CARD", StatusCode = "InTransit", Description = "ID Card is in transit", SortOrder = 8 },
-            new() { TypeCode = "ID_CARD", StatusCode = "Delivered", Description = "ID Card has been delivered", SortOrder = 9 }
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "ReadyForRelease", Description = "ID Card ready for production", SortOrder = 1 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Released", Description = "ID Card released to production", SortOrder = 2 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "QueuedForPrinting", Description = "ID Card queued for printing", SortOrder = 3 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Printed", Description = "ID Card has been printed", SortOrder = 4 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Inserted", Description = "ID Card inserted into envelope", SortOrder = 5 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "WarehouseReady", Description = "ID Card ready at warehouse", SortOrder = 6 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Shipped", Description = "ID Card shipped", SortOrder = 7 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "InTransit", Description = "ID Card is in transit", SortOrder = 8 },
+            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Delivered", Description = "ID Card delivered", SortOrder = 9 }
         };
 
         context.CommunicationTypeStatuses.AddRange(eobStatuses);

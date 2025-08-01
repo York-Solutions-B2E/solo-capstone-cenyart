@@ -1,0 +1,30 @@
+@page "/details/{Id:guid}"
+@inject ICommunicationService CommSvc
+
+@if (comm == null)
+{
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h5">@comm.Title (@comm.TypeCode)</MudText>
+
+        <MudStepper Class="mt-4" linear="false">
+            @foreach (var step in comm.History)
+            {
+                <MudStep label="@step.StatusCode" icon="@Icons.Material.Filled.Check" Completed="true">
+                    <MudText Typo="Typo.caption">@step.OccurredUtc.ToLocalTime()</MudText>
+                </MudStep>
+            }
+        </MudStepper>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    CommunicationDto? comm;
+
+    protected override async Task OnInitializedAsync()
+        => comm = await CommSvc.GetByIdAsync(Id);
+}

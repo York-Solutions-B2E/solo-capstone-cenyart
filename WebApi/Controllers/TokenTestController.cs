@@ -6,16 +6,10 @@ namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class TokenTestController : ControllerBase
+public class TokenTestController(ITokenTestService tokenService, ILogger<TokenTestController> logger) : ControllerBase
 {
-    private readonly ITokenTestService _tokenService;
-    private readonly ILogger<TokenTestController> _logger;
-
-    public TokenTestController(ITokenTestService tokenService, ILogger<TokenTestController> logger)
-    {
-        _tokenService = tokenService;
-        _logger = logger;
-    }
+    private readonly ITokenTestService _tokenService = tokenService;
+    private readonly ILogger<TokenTestController> _logger = logger;
 
     [HttpPost("get-client-token")]
     public async Task<IActionResult> GetClientCredentialsToken()

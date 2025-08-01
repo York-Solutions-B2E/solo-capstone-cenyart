@@ -31,11 +31,19 @@ dotnet add package Okta.AspNetCore \
 // AppHost
 dotnet add package Aspire.Hosting.SqlServer
 dotnet ef migrations add InitialCreate --project WebApi
+
+// BlazorServer
+dotnet add package MudBlazor --project BlazorServer
+
+// RabitMQ
+dotnet add package Aspire.Hosting.RabbitMQ --project AppHost
+dotnet add package Aspire.RabbitMQ.Client --project WebApi
+dotnet add package Aspire.RabbitMQ.Client --project BlazorServer
 ```
 
 ```bash
 # Add initial migration
-dotnet ef migrations add InitialCreate
+dotnet ef migrations add InitialCreate --project WebApi
 
 # Update database
 dotnet ef database update
