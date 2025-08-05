@@ -68,18 +68,33 @@ public class CommunicationService(CommunicationDbContext db) : ICommunicationSer
 
     public async Task UpdateStatusAsync(Guid id, string newStatus)
     {
+        // 1️⃣ (Optional) Validate that this enum value is actually seeded in GlobalStatuses
+        var exists = await _db.GlobalStatuses
+                            .AnyAsync(gs => gs.StatusCode == newStatus);
+        if (!exists)
+            throw new KeyNotFoundException($"Status code '{newStatus}' is not defined in GlobalStatuses.");
+
+        // 2️⃣ Fetch and update the communication
         var comm = await _db.Communications.FindAsync(id);
-        if (comm == null) return;
-        comm.CurrentStatus = newStatus;
+        if (comm == null || !comm.IsActive)
+            throw new InvalidOperationException($"Communication '{id}' not found.");
+
+        comm.CurrentStatus  = newStatus;
         comm.LastUpdatedUtc = DateTime.UtcNow;
-        _db.CommunicationStatusHistory.Add(new CommunicationStatusHistory {
-            Id = Guid.NewGuid(),
+
+        // 3️⃣ Add history record
+        _db.CommunicationStatusHistory.Add(new CommunicationStatusHistory
+        {
+            Id              = Guid.NewGuid(),
             CommunicationId = id,
-            StatusCode = newStatus,
-            OccurredUtc = DateTime.UtcNow
+            StatusCode      = newStatus,
+            OccurredUtc     = DateTime.UtcNow
         });
+
         await _db.SaveChangesAsync();
     }
+
+
 
     public async Task SoftDeleteAsync(Guid id)
     {

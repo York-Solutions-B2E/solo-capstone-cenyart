@@ -1,51 +1,83 @@
 @page "/simulator"
+@using Shared.DTOs
+@using Shared.Interfaces
 @inject ICommunicationService CommSvc
-@inject IEventService EventSvc
+@inject IEventService        EventSvc
+@inject IStatusService       StatusSvc
 
 <MudPaper Class="pa-4">
+    <MudText Typo="Typo.h5">Event Simulator</MudText>
+
     <MudGrid>
-        <MudItem xs="12" sm="6">
-            <MudSelect T="Guid" Label="Select Communication" @bind-Value="selected">
-                @foreach (var c in comms)
-                {
-                    <MudSelectItem Value="@c.Id">@c.Title</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
-        <MudItem xs="12" sm="6">
-            <MudSelect T="string" Label="Select Event" @bind-Value="chosen">
-                @foreach (var e in events)
-                {
-                    <MudSelectItem Value="@e">@e</MudSelectItem>
-                }
-            </MudSelect>
-        </MudItem>
+
+      <!-- Communication selector -->
+      <MudItem xs="12" sm="6">
+        <MudSelect T="Guid"
+                   Label="Select Communication"
+                   @bind-Value="selectedCommId">
+          @foreach (var c in comms)
+          {
+              <MudSelectItem Value="@c.Id">@c.Title (@c.TypeCode)</MudSelectItem>
+          }
+        </MudSelect>
+      </MudItem>
+
+      <!-- Status selector -->
+      <MudItem xs="12" sm="6">
+        <MudSelect T="string"
+                   Label="Select New Status"
+                   @bind-Value="chosenStatus">
+          @foreach (var s in statuses)
+          {
+              <MudSelectItem Value="@s.StatusCode">@s.DisplayName</MudSelectItem>
+          }
+        </MudSelect>
+      </MudItem>
+
     </MudGrid>
 
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="Send">Publish</MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               Class="mt-3"
+               OnClick="PublishEvent">
+      Publish
+    </MudButton>
 </MudPaper>
 
 @code {
-    List<CommunicationDto> comms = [];
-    Guid selected;
-    string chosen = "IdCardPrinted";
-    string[] events = { "IdCardPrinted", "IdCardShipped", "IdCardDelivered" };
+    List<CommunicationDto> comms      = new();
+    List<StatusOptionDto> statuses   = new();
+    Guid selectedCommId;
+    string chosenStatus = "";
 
     protected override async Task OnInitializedAsync()
     {
         comms = await CommSvc.GetAllAsync();
-        selected = comms.FirstOrDefault()?.Id ?? Guid.Empty;
+        if (comms.Any())
+        {
+            selectedCommId = comms[0].Id;
+            await LoadStatusesFor(comms[0].TypeCode);
+        }
     }
 
-    async Task Send()
+    private async Task LoadStatusesFor(string typeCode)
     {
-        await EventSvc.PublishAsync(new EventDto
-        {
-            CommunicationId = selected,
-            EventType = chosen,
-            TimestampUtc = DateTime.UtcNow
+        statuses = await StatusSvc.GetForTypeAsync(typeCode);
+        chosenStatus = statuses.FirstOrDefault()?.StatusCode ?? "";
+        StateHasChanged();
+    }
+
+    private async Task PublishEvent()
+    {
+        await EventSvc.PublishAsync(new EventDto {
+            CommunicationId = selectedCommId,
+            StatusCode      = chosenStatus,
+            TimestampUtc    = DateTime.UtcNow
         });
 
-        comms = await CommSvc.GetAllAsync(); // optional refresh
+        // Refresh
+        comms = await CommSvc.GetAllAsync();
+        var comm = comms.First(c => c.Id == selectedCommId);
+        await LoadStatusesFor(comm.TypeCode);
     }
 }

@@ -1,24 +1,34 @@
-﻿@inherits LayoutComponentBase
+﻿@namespace BlazorServer.Layout
+@inherits LayoutComponentBase
 
+<MudThemeProvider />
+<MudPopoverProvider />
 <MudDialogProvider />
-<MudSnackbarProvider maxdisplayedsnackbars="3" preventduplicates="true">
-    <MudLayout>
+<MudSnackbarProvider max-displayed-snackbars="3" prevent-duplicates="true" />
 
-        <MudAppBar color="Color.Primary" elevation="4">
-            <MudIconButton icon="@Icons.Material.Filled.Menu" color="Color.Inherit" edge="Edge.Start" onclick="ToggleDrawer" />
-            <MudText typo="Typo.h6">Communication Lifecycle</MudText>
-        </MudAppBar>
+<MudLayout>
 
-        <MudDrawer open="@_drawerOpen" clipmode="DrawerClipMode.Always" variant="DrawerVariant.Mini">
-            <NavMenu />
-        </MudDrawer>
+    <MudAppBar Color="Color.Primary" Elevation="4">
+        <MudIconButton 
+            Icon="@Icons.Material.Filled.Menu"
+            Color="Color.Inherit"
+            Edge="Edge.Start"
+            OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6">Communication Lifecycle</MudText>
+    </MudAppBar>
 
-        <MudMainContent>
-            @Body
-        </MudMainContent>
+    <MudDrawer 
+        @bind-Open="_drawerOpen"
+        ClipMode="DrawerClipMode.Always"
+        Variant="DrawerVariant.Mini">
+        <NavMenu />
+    </MudDrawer>
 
-    </MudLayout>
-</MudSnackbarProvider>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+
+</MudLayout>
 
 @code {
     private bool _drawerOpen = true;

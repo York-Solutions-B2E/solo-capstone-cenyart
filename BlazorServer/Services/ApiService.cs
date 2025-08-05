@@ -1,9 +1,9 @@
-using System.Net.Http.Json;
 using Shared.DTOs;
 using Shared.Interfaces;
 
 namespace BlazorServer.Services;
-public class ApiService(HttpClient http) : ICommunicationService, IEventService
+
+public class ApiService(HttpClient http) : ICommunicationService, IEventService, IStatusService
 {
     private readonly HttpClient _http = http;
 
@@ -52,4 +52,11 @@ public class ApiService(HttpClient http) : ICommunicationService, IEventService
 
     public Task PublishAsync(EventDto dto)
         => _http.PostAsJsonAsync("events", dto);
+
+    public async Task<List<StatusOptionDto>> GetForTypeAsync(string typeCode)
+    {
+        return await _http.GetFromJsonAsync<List<StatusOptionDto>>($"statuses/{typeCode}")
+               ?? [];
+    }
+    
 }

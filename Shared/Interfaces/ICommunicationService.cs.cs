@@ -1,4 +1,5 @@
 using Shared.DTOs;
+using Shared.Enums;
 
 namespace Shared.Interfaces;
 

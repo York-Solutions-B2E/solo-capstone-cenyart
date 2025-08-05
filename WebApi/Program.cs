@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Shared.Interfaces;
 using WebApi.Services;
 using WebApi.Data;
+using WebApi.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,14 +25,14 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// Okta Token Service (for testing)
-builder.Services.AddHttpClient<ITokenTestService, TokenTestService>();
-builder.Services.AddScoped<ITokenTestService, TokenTestService>();
+// builder.Services.AddHttpClient<ITokenTestService, TokenTestService>();
 
 // DI
 builder.Services
+    .AddScoped<ITokenTestService, TokenTestService>()
     .AddScoped<ICommunicationService, CommunicationService>()
-    .AddScoped<IEventService, EventService>();
+    .AddScoped<IEventService, EventService>()
+    .AddScoped<IStatusService, StatusService>();
 
 builder.Services.AddControllers();
 
@@ -38,29 +40,29 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "MvpOkta API",
-        Version = "v1"
-    });
+    // Basic doc
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Communication API", Version = "v1" });
 
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    // Our filter to pull statuses from the DB
+    options.OperationFilter<StatusOperationFilter>();
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
         Name = "Authorization",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
         Scheme = "Bearer"
     });
 
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                Reference = new OpenApiReference
                 {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Type = ReferenceType.SecurityScheme,
                     Id = "Bearer"
                 }
             },
@@ -108,6 +110,7 @@ using (var scope = app.Services.CreateScope())
 // Swagger
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }

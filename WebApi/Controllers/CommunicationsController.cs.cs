@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Shared.DTOs;
+using Shared.Enums;
 using Shared.Interfaces;
 
 namespace WebApi.Controllers;
@@ -26,11 +27,12 @@ public class CommunicationsController(ICommunicationService svc) : ControllerBas
     }
 
     [HttpPut("{id}/status")]
-    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] string s)
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] string newStatus)
     {
-        await _svc.UpdateStatusAsync(id, s);
+        await _svc.UpdateStatusAsync(id, newStatus);
         return NoContent();
     }
+
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
