@@ -8,6 +8,7 @@ dotnet user-secrets set "Okta:OktaDomain" ""
 dotnet user-secrets set "Okta:ClientId" ""
 dotnet user-secrets set "Okta:ClientSecret" ""
 dotnet user-secrets set "Okta:AuthorizationServerId" "default"
+dotnet user-secrets set "ConnectionStrings:sqldata" "Server=localhost,1433;Database=sqldata;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=true"
 
 dotnet user-secrets list --project BlazorServer
 dotnet user-secrets list --project WebApi
@@ -62,5 +63,14 @@ docker volume ls
 # Remove the sqlserver volume
 docker volume rm sqlserver
 
+docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=YourStrongPassword123!' \
+  -p 1433:1433 --name sqldata \
+  -d mcr.microsoft.com/mssql/server:2022-latest
+
 dotnet run --project AppHost
+dotnet run --project WebApi
+dotnet run --project BlazorServer
+
+dotnet clean
+dotnet build
 ```
