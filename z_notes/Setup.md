@@ -46,7 +46,7 @@ dotnet add package Aspire.RabbitMQ.Client --project BlazorServer
 dotnet ef migrations add InitialCreate --project WebApi
 
 # Update database
-dotnet ef database update
+dotnet ef database update --project WebApi
 
 # Add subsequent migrations (example)
 dotnet ef migrations add AddCommunicationTypeStatuses
@@ -54,4 +54,13 @@ dotnet ef database update
 
 # For production deployment
 dotnet ef database update --connection "YourProductionConnectionString"
+```
+
+```bash
+# Check that the volume exists
+docker volume ls
+# Remove the sqlserver volume
+docker volume rm sqlserver
+
+dotnet run --project AppHost
 ```

@@ -3,9 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Shared.Interfaces;
-using WebApi.Services;
 using WebApi.Data;
-using WebApi.Swagger;
+using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,14 +24,13 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// builder.Services.AddHttpClient<ITokenTestService, TokenTestService>();
-
 // DI
 builder.Services
     .AddScoped<ITokenTestService, TokenTestService>()
-    .AddScoped<ICommunicationService, CommunicationService>()
-    .AddScoped<IEventService, EventService>()
-    .AddScoped<IStatusService, StatusService>();
+    .AddScoped<ICommService, CommService>()
+    .AddScoped<ITypeService, TypeService>()
+    .AddScoped<IStatusService, StatusService>()
+    .AddScoped<IValidationService, ValidationService>();
 
 builder.Services.AddControllers();
 
@@ -42,9 +40,6 @@ builder.Services.AddSwaggerGen(options =>
 {
     // Basic doc
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Communication API", Version = "v1" });
-
-    // Our filter to pull statuses from the DB
-    options.OperationFilter<StatusOperationFilter>();
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

@@ -1,18 +1,34 @@
 using Microsoft.AspNetCore.Mvc;
-using Shared.DTOs;
+using Shared.Dtos;
 using Shared.Interfaces;
 
-namespace WebApi.Controllers;
-[ApiController]
-[Route("api/statuses")]
-public class StatusController(IStatusService svc) : ControllerBase
-{
-    private readonly IStatusService _svc = svc;
+namespace Webapi.Controllers;
 
-    /// <summary>
-    /// GET /api/statuses/{typeCode}
-    /// </summary>
+[ApiController]
+[Route("api/[controller]")]
+public class StatusesController(IStatusService svc) : ControllerBase
+{
     [HttpGet("{typeCode}")]
-    public Task<List<StatusOptionDto>> GetForType(string typeCode)
-        => _svc.GetForTypeAsync(typeCode);
+    public Task<IEnumerable<StatusDto>> GetByType(string typeCode) => svc.GetByTypeAsync(typeCode);
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] StatusCreateDto dto)
+    {
+        await svc.AddAsync(dto);
+        return NoContent();
+    }
+
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] StatusUpdateDto dto)
+    {
+        await svc.UpdateAsync(dto);
+        return NoContent();
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> Delete([FromBody] StatusDeleteDto dto)
+    {
+        await svc.DeleteAsync(dto);
+        return NoContent();
+    }
 }

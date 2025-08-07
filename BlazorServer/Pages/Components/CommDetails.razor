@@ -1,0 +1,25 @@
+
+@namespace BlazorServer.Pages.Components
+
+<div>
+  <h4>@Comm.Title</h4>
+  <p><b>Type:</b> @Comm.TypeCode</p>
+  <p><b>Status:</b> @Comm.CurrentStatus</p>
+  <p><b>Last Updated:</b> @Comm.LastUpdatedUtc.ToLocalTime():g</p>
+  <hr />
+  <h5>History</h5>
+  <ul class="list-group">
+    @foreach (var h in Comm.StatusHistory)
+    {
+      <li class="list-group-item">@h.StatusCode - @h.OccurredUtc.ToLocalTime():g</li>
+    }
+  </ul>
+  <button class="btn btn-secondary mt-3" @onclick="Close">Back</button>
+</div>
+
+@code {
+    [Parameter] public DetailsDto Comm { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Task Close() => OnClose.InvokeAsync();
+}

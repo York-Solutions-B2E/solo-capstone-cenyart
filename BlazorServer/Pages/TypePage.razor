@@ -1,0 +1,68 @@
+
+@page "/typepage"
+@namespace BlazorServer.Pages
+@inject TypeService TypeService
+
+<div class="row">
+  <div class="col-4">
+    <h5>Types</h5>
+    @if (_types?.Any() != true)
+    {
+      <p><em>Loading or no types found...</em></p>
+    }
+    else
+    {
+      <ul class="list-group">
+        @foreach (var t in _types)
+        {
+          <li class="list-group-item @(t.TypeCode == _selected ? "active" : "")"
+              @onclick="() => Select(t.TypeCode)">
+            @t.DisplayName
+          </li>
+        }
+      </ul>
+    }
+    <button class="btn btn-primary mt-2" @onclick="New">+ Add</button>
+  </div>
+
+  <div class="col-8">
+    <TypeForm NewType="_createType"
+              EditType="_typeDetails"
+              OnSaved="Reload"
+              OnCanceled="CancelForm" />
+  </div>
+</div>
+
+@code {
+    private List<TypeDto> _types = new();
+    private string _selected = "";
+    private TypeCreateDto _createType = new("", "");
+    private TypeDetailsDto _typeDetails = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        _types = (await TypeService.GetAllAsync()).ToList();
+        _selected = "";
+        StateHasChanged();
+    }
+
+    private async Task Select(string code)
+    {
+        _selected = code;
+        _typeDetails = await TypeService.GetByCodeAsync(code);
+        StateHasChanged();
+    }
+
+    private void New()
+    {
+        _createType = new TypeCreateDto("", "");
+        _selected = "";
+    }
+
+    private void CancelForm() { /* no-op */ }
+}

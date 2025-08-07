@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Shared.Enums;
+using System.Text.RegularExpressions;
 
 namespace WebApi.Data;
 
@@ -7,68 +7,105 @@ public static class DatabaseSeeder
 {
     public static async Task SeedAsync(CommunicationDbContext context)
     {
-        if (await context.GlobalStatuses.AnyAsync())
-            return;
-
-        var globalStatuses = new List<GlobalStatus>
+        // 1️⃣ Seed CommunicationTypes
+        if (!await context.CommunicationTypes.AnyAsync())
         {
-            new() { StatusCode = "ReadyForRelease", DisplayName = "Ready for Release", Phase = StatusPhase.Creation, SortOrder = 1 },
-            new() { StatusCode = "Released", DisplayName = "Released", Phase = StatusPhase.Creation, SortOrder = 2 },
-            new() { StatusCode = "QueuedForPrinting", DisplayName = "Queued for Printing", Phase = StatusPhase.Production, SortOrder = 3 },
-            new() { StatusCode = "Printed", DisplayName = "Printed", Phase = StatusPhase.Production, SortOrder = 4 },
-            new() { StatusCode = "Inserted", DisplayName = "Inserted", Phase = StatusPhase.Production, SortOrder = 5 },
-            new() { StatusCode = "WarehouseReady", DisplayName = "Warehouse Ready", Phase = StatusPhase.Production, SortOrder = 6 },
-            new() { StatusCode = "Shipped", DisplayName = "Shipped", Phase = StatusPhase.Logistics, SortOrder = 7 },
-            new() { StatusCode = "InTransit", DisplayName = "In Transit", Phase = StatusPhase.Logistics, SortOrder = 8 },
-            new() { StatusCode = "Delivered", DisplayName = "Delivered", Phase = StatusPhase.Logistics, SortOrder = 9 },
-            new() { StatusCode = "Returned", DisplayName = "Returned", Phase = StatusPhase.Logistics, SortOrder = 10 },
-            new() { StatusCode = "Failed", DisplayName = "Failed", Phase = StatusPhase.Production, SortOrder = 11 },
-            new() { StatusCode = "Cancelled", DisplayName = "Cancelled", Phase = StatusPhase.Creation, SortOrder = 12 },
-            new() { StatusCode = "Expired", DisplayName = "Expired", Phase = StatusPhase.Logistics, SortOrder = 13 },
-            new() { StatusCode = "Archived", DisplayName = "Archived", Phase = StatusPhase.Logistics, SortOrder = 14 }
-        };
-        context.GlobalStatuses.AddRange(globalStatuses);
-        await context.SaveChangesAsync();
+            var types = new[]
+            {
+                new CommunicationType { TypeCode = "EOB",     DisplayName = "Explanation of Benefits" },
+                new CommunicationType { TypeCode = "EOP",     DisplayName = "Explanation of Payment"  },
+                new CommunicationType { TypeCode = "ID_CARD", DisplayName = "ID Card"                  }
+            };
+            context.CommunicationTypes.AddRange(types);
+            await context.SaveChangesAsync();
+        }
 
-        var communicationTypes = new List<CommunicationType>
+        // 2️⃣ Seed CommunicationTypeStatuses (including "Pending" first, and human-friendly descriptions)
+        if (!await context.CommunicationTypeStatuses.AnyAsync())
         {
-            new() { TypeCode = "EOB", DisplayName = "Explanation of Benefits", Description = "Documents explaining insurance claim processing" },
-            new() { TypeCode = "EOP", DisplayName = "Explanation of Payment", Description = "Documents detailing payment information" },
-            new() { TypeCode = "ID_CARD", DisplayName = "ID Card", Description = "Member identification cards" }
-        };
-        context.CommunicationTypes.AddRange(communicationTypes);
-        await context.SaveChangesAsync();
+            var statusMap = new Dictionary<string, string[]>
+            {
+                ["EOB"] =
+                [
+                    "Pending",
+                    "ReadyForRelease", "Released", "QueuedForPrinting", "Printed", "Shipped", "Delivered"
+                ],
+                ["EOP"] =
+                [
+                    "Pending",
+                    "QueuedForPrinting", "Printed", "Shipped", "Delivered"
+                ],
+                ["ID_CARD"] =
+                [
+                    "Pending",
+                    "ReadyForRelease", "Released", "QueuedForPrinting", "Printed",
+                    "Inserted", "WarehouseReady", "Shipped", "InTransit", "Delivered"
+                ]
+            };
 
-        await SeedDefaultStatusMappings(context);
-    }
+            var mappings = new List<CommunicationTypeStatus>();
+            foreach (var (typeCode, codes) in statusMap)
+            {
+                foreach (var code in codes)
+                {
+                    // Split camel-case or underscores into words for Description
+                    string description = Regex.Replace(
+                        code,
+                        "([a-z])([A-Z])",
+                        "$1 $2"
+                    ).Replace("_", " ");
 
-    private static async Task SeedDefaultStatusMappings(CommunicationDbContext context)
-    {
-        var eobStatuses = new List<CommunicationTypeStatus>
+                    mappings.Add(new CommunicationTypeStatus
+                    {
+                        Id          = Guid.NewGuid(),
+                        TypeCode    = typeCode,
+                        StatusCode  = code,
+                        Description = description,
+                        IsActive    = true
+                    });
+                }
+            }
+
+            context.CommunicationTypeStatuses.AddRange(mappings);
+            await context.SaveChangesAsync();
+        }
+
+        // 3️⃣ Seed Communications + initial History (all start as "Pending")
+        if (!await context.Communications.AnyAsync())
         {
-            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "ReadyForRelease", Description = "EOB ready for release", SortOrder = 1 },
-            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Released", Description = "EOB has been released", SortOrder = 2 },
-            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "QueuedForPrinting", Description = "EOB queued for printing", SortOrder = 3 },
-            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Printed", Description = "EOB has been printed", SortOrder = 4 },
-            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Shipped", Description = "EOB has been shipped", SortOrder = 5 },
-            new() { Id = Guid.NewGuid(), TypeCode = "EOB", StatusCode = "Delivered", Description = "EOB has been delivered", SortOrder = 6 }
-        };
+            var typeCodes = new[] { "EOB", "EOP", "ID_CARD" };
+            var communications = new List<Communication>();
 
-        var idCardStatuses = new List<CommunicationTypeStatus>
-        {
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "ReadyForRelease", Description = "ID Card ready for production", SortOrder = 1 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Released", Description = "ID Card released to production", SortOrder = 2 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "QueuedForPrinting", Description = "ID Card queued for printing", SortOrder = 3 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Printed", Description = "ID Card has been printed", SortOrder = 4 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Inserted", Description = "ID Card inserted into envelope", SortOrder = 5 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "WarehouseReady", Description = "ID Card ready at warehouse", SortOrder = 6 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Shipped", Description = "ID Card shipped", SortOrder = 7 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "InTransit", Description = "ID Card is in transit", SortOrder = 8 },
-            new() { Id = Guid.NewGuid(), TypeCode = "ID_CARD", StatusCode = "Delivered", Description = "ID Card delivered", SortOrder = 9 }
-        };
+            // create 10 communications, cycling through the three types
+            for (int i = 0; i < 10; i++)
+            {
+                var typeCode = typeCodes[i % typeCodes.Length];
+                communications.Add(new Communication
+                {
+                    Id             = Guid.NewGuid(),
+                    Title          = $"{typeCode} Sample #{i + 1}",
+                    TypeCode       = typeCode,
+                    CurrentStatus  = "Pending",
+                    LastUpdatedUtc = DateTime.UtcNow,
+                    IsActive       = true
+                });
+            }
 
-        context.CommunicationTypeStatuses.AddRange(eobStatuses);
-        context.CommunicationTypeStatuses.AddRange(idCardStatuses);
-        await context.SaveChangesAsync();
+            context.Communications.AddRange(communications);
+
+            // initial history entries
+            var histories = communications.Select(c => new CommunicationStatusHistory
+            {
+                Id              = Guid.NewGuid(),
+                CommunicationId = c.Id,
+                StatusCode      = c.CurrentStatus,
+                OccurredUtc     = c.LastUpdatedUtc,
+                IsActive        = true
+            });
+
+            context.CommunicationStatusHistory.AddRange(histories);
+
+            await context.SaveChangesAsync();
+        }
     }
 }

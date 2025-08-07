@@ -1,0 +1,79 @@
+
+@page "/commlist"
+@namespace BlazorServer.Pages
+@inject CommService CommService
+
+<div class="row">
+  <div class="col-4">
+    <h5>Communications</h5>
+    @if (_items?.Any() != true)
+    {
+      <p><em>Loading or no communications found...</em></p>
+    }
+    else
+    {
+      <ul class="list-group">
+        @foreach (var c in _items)
+        {
+          <li class="list-group-item @(c.Id == _selectedId ? "active" : "")"
+              @onclick="() => Select(c.Id)">
+            @c.Title
+          </li>
+        }
+      </ul>
+    }
+    <button class="btn btn-primary mt-2" @onclick="New">+ Add</button>
+  </div>
+
+  <div class="col-8">
+    @if (_showDetails)
+    {
+      <CommDetails Comm="_details" OnClose="CloseDetails" />
+    }
+    else
+    {
+      <CommForm NewModel="_createDto"
+                EditModel="_details"
+                OnSaved="Reload"
+                OnCanceled="CancelForm" />
+    }
+  </div>
+</div>
+
+@code {
+    private List<Dto> _items = new();
+    private Guid _selectedId;
+    private bool _showDetails;
+    private CommunicationCreateDto _createDto = new("", "");
+    private DetailsDto _details = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        var (items, total) = await CommService.GetPaginatedAsync(page: 1, pageSize: 50);
+        _items = items.ToList();
+        _showDetails = false;
+        StateHasChanged();
+    }
+
+    private async Task Select(Guid id)
+    {
+        _selectedId = id;
+        _details = await CommService.GetByIdAsync(id);
+        _showDetails = true;
+        StateHasChanged();
+    }
+
+    private void New()
+    {
+        _createDto = new CommunicationCreateDto("", "");
+        _showDetails = false;
+    }
+
+    private void CloseDetails() => _showDetails = false;
+    private void CancelForm()   => _showDetails = false;
+}

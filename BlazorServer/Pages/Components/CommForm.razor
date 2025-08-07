@@ -1,0 +1,120 @@
+
+@namespace BlazorServer.Pages.Components
+
+@inject CommService CommService
+@inject TypeService TypeService
+@inject StatusService StatusService
+
+<EditForm Model="CurrentModel" OnValidSubmit="HandleValid">
+  <div class="mb-3">
+    <label>Title</label>
+    <InputText @bind-Value="BoundTitle" class="form-control" />
+  </div>
+  <div class="mb-3">
+    <label>Type</label>
+    <InputSelect @bind-Value="BoundTypeCode"
+                 class="form-select"
+                 onchange="LoadStatuses">
+      <option value="">-- select --</option>
+      @foreach (var t in Types)
+      {
+        <option value="@t.TypeCode">@t.DisplayName</option>
+      }
+    </InputSelect>
+  </div>
+  <div class="mb-3">
+    <label>Status</label>
+    <InputSelect @bind-Value="BoundStatus" class="form-select">
+      <option value="">-- select --</option>
+      @foreach (var s in ValidStatuses)
+      {
+        <option value="@s.StatusCode">@s.StatusCode</option>
+      }
+    </InputSelect>
+  </div>
+
+  <button class="btn btn-primary me-2">@(_isNew ? "Create" : "Update")</button>
+  @if (!_isNew)
+  {
+    <button type="button" class="btn btn-danger me-2" @onclick="Delete">Delete</button>
+  }
+  <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+</EditForm>
+
+@code {
+    [Parameter] public CommunicationCreateDto? NewModel { get; set; }
+    [Parameter] public DetailsDto? EditModel { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnCanceled { get; set; }
+
+    private bool _isNew => NewModel is not null;
+    private CommunicationCreateDto _create = new("", "");
+    private DetailsDto _edit = default!;
+    private List<TypeDto> Types = new();
+    private List<StatusDto> ValidStatuses = new();
+
+    // Unified model for EditForm
+    private object CurrentModel => _isNew ? (object)_create : _edit;
+
+    private string BoundTitle
+    {
+        get => _isNew ? _create.Title : _edit.Title;
+        set
+        {
+            if (_isNew) _create = _create with { Title = value };
+            else         _edit   = _edit   with { Title = value };
+        }
+    }
+
+    private string BoundTypeCode
+    {
+        get => _isNew ? _create.TypeCode : _edit.TypeCode;
+        set
+        {
+            if (_isNew) _create = _create with { TypeCode = value };
+            else         _edit   = _edit   with { TypeCode = value };
+        }
+    }
+
+    private string BoundStatus
+    {
+        get => _isNew ? "" : _edit.CurrentStatus;
+        set => _edit = _edit with { CurrentStatus = value };
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Types = await TypeService.GetAllAsync();
+        if (_isNew)
+            _create = NewModel!;
+        else
+        {
+            _edit = EditModel!;
+            await LoadStatuses();
+        }
+    }
+
+    private async Task LoadStatuses(ChangeEventArgs _ = null!)
+    {
+        if (!string.IsNullOrWhiteSpace(BoundTypeCode))
+            ValidStatuses = await StatusService.GetByTypeAsync(BoundTypeCode);
+    }
+
+    private async Task HandleValid()
+    {
+        if (_isNew)
+            await CommService.CreateAsync(_create);
+        else
+            await CommService.UpdateAsync(new CommunicationUpdateDto(_edit.Id, _edit.CurrentStatus));
+
+        await OnSaved.InvokeAsync();
+    }
+
+    private async Task Delete()
+    {
+        await CommService.DeleteAsync(new CommunicationDeleteDto(_edit.Id));
+        await OnSaved.InvokeAsync();
+    }
+
+    private Task Cancel() => OnCanceled.InvokeAsync();
+}

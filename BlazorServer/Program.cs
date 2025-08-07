@@ -1,6 +1,5 @@
 using BlazorServer.Services;
 using MudBlazor.Services;
-using Shared.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,12 +14,24 @@ builder.Services.AddServerSideBlazor();   // required for blazor.server.js
 builder.Services.AddMudServices();
 
 // 4️⃣ HTTP Client / ApiServices (typed clients)
-var apiBase = builder.Configuration["WebApiEndpoint"]!;
-builder.Services.AddHttpClient<ApiService>(client =>
-    client.BaseAddress = new Uri(apiBase))
-    .AddTypedClient<ICommunicationService>((http, _) => new ApiService(http))
-    .AddTypedClient<IEventService>((http, _)         => new ApiService(http))
-    .AddTypedClient<IStatusService>((http, _)        => new ApiService(http));
+var apiBase = builder.Configuration["WebApiEndpointHttps"];
+if (string.IsNullOrWhiteSpace(apiBase))
+{
+    throw new InvalidOperationException("API URL is missing. Please set 'WebApiEndpointHttps' in appsettings.json or environment variables.");
+}
+builder.Services.AddHttpClient<CommService>(client =>
+{
+    client.BaseAddress = new Uri(apiBase);
+});
+builder.Services.AddHttpClient<TypeService>(client =>
+{
+    client.BaseAddress = new Uri(apiBase);
+});
+builder.Services.AddHttpClient<StatusService>(client =>
+{
+    client.BaseAddress = new Uri(apiBase);
+});
+
 
 // ... other services ...
 

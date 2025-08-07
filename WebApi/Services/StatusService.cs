@@ -1,24 +1,47 @@
 using Microsoft.EntityFrameworkCore;
-using Shared.DTOs;
+using Shared.Dtos;
 using Shared.Interfaces;
 using WebApi.Data;
 
 namespace WebApi.Services;
+
 public class StatusService(CommunicationDbContext db) : IStatusService
 {
-    private readonly CommunicationDbContext _db = db;
+    public async Task<IEnumerable<StatusDto>> GetByTypeAsync(string typeCode)
+        => await db.CommunicationTypeStatuses
+                 .Where(s => s.TypeCode == typeCode)
+                 .Select(s => new StatusDto(s.Id, s.TypeCode, s.StatusCode, s.Description, s.IsActive))
+                 .ToListAsync();
 
-    public async Task<List<StatusOptionDto>> GetForTypeAsync(string typeCode)
+    public async Task AddAsync(StatusCreateDto dto)
     {
-        return await _db.CommunicationTypeStatuses
-            .Where(cts => cts.TypeCode == typeCode && cts.IsActive)
-            .Include(cts => cts.Status)
-            .OrderBy(cts => cts.SortOrder)
-            .Select(cts => new StatusOptionDto {
-                StatusCode  = cts.StatusCode,
-                DisplayName = cts.Status.DisplayName,
-                SortOrder   = cts.SortOrder
-            })
-            .ToListAsync();
+        db.CommunicationTypeStatuses.Add(new CommunicationTypeStatus
+        {
+            TypeCode    = dto.TypeCode,
+            StatusCode  = dto.StatusCode,
+            Description = dto.Description,
+            IsActive    = true
+        });
+        await db.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(StatusUpdateDto dto)
+    {
+        var s = await db.CommunicationTypeStatuses.FindAsync(dto.Id)
+              ?? throw new KeyNotFoundException($"Status {dto.Id} not found.");
+
+        s.StatusCode  = dto.StatusCode;
+        s.Description = dto.Description;
+        s.IsActive    = dto.IsActive;
+        await db.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(StatusDeleteDto dto)
+    {
+        var s = await db.CommunicationTypeStatuses.FindAsync(dto.Id)
+              ?? throw new KeyNotFoundException($"Status {dto.Id} not found.");
+
+        db.CommunicationTypeStatuses.Remove(s);
+        await db.SaveChangesAsync();
     }
 }

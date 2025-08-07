@@ -1,31 +1,9 @@
+
 @page "/"
-@inject ICommunicationService CommSvc
-@inject NavigationManager Nav
+@namespace BlazorServer.Pages
 
-<MudPaper Class="pa-4">
-    <MudTable Items="@items" Dense="true" Hover="true">
-        <HeaderContent>
-            <MudTh>Title</MudTh>
-            <MudTh>Type</MudTh>
-            <MudTh>Status</MudTh>
-            <MudTh>Updated</MudTh>
-            <MudTh />
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd>@context.Title</MudTd>
-            <MudTd>@context.TypeCode</MudTd>
-            <MudTd>@context.CurrentStatus</MudTd>
-            <MudTd>@context.LastUpdatedUtc.ToLocalTime().ToString("g")</MudTd>
-            <MudTd>
-                <MudButton Variant="Variant.Text" OnClick="@(() => Nav.NavigateTo($"details/{context.Id}"))">Details</MudButton>
-            </MudTd>
-        </RowTemplate>
-    </MudTable>
-</MudPaper>
+<h1>Welcome to YourApp</h1>
 
-@code {
-    List<CommunicationDto> items = [];
-
-    protected override async Task OnInitializedAsync()
-        => items = await CommSvc.GetAllAsync();
-}
+<p>
+    This is the home page. Use the navigation menu to explore.
+</p>
