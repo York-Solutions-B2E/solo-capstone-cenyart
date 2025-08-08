@@ -1,7 +1,23 @@
-﻿
-<nav class="nav flex-column bg-light vh-100 p-2 flex-shrink-0">
-    <a class="nav-link" href="">Login</a>
-    <a class="nav-link" href="commlist">Communications</a>
-    <a class="nav-link" href="typepage">Types</a>
-    <a class="nav-link" href="statuspage">Statuses</a>
+﻿@namespace BlazorServer.Layout
+@using Microsoft.AspNetCore.Components.Routing
+
+<nav class="nav flex-column bg-dark text-light vh-100 p-3">
+  <h5 class="text-white mb-4">Communication Lifecycle</h5>
+  <NavLink class="nav-link text-light" href="/" Match="NavLinkMatch.All">
+    Home
+  </NavLink>
+  <NavLink class="nav-link text-light" href="/commlist">
+    Communications
+  </NavLink>
 </nav>
+
+<style>
+  .nav-link.active {
+    background-color: #343a40;
+    color: #fff !important;
+  }
+  .nav-link:hover {
+    background-color: #495057;
+    color: #fff !important;
+  }
+</style>

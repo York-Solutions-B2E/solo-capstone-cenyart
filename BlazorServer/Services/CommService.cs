@@ -1,53 +1,81 @@
 using Shared.Dtos;
 
-namespace BlazorServer.Services;
-
-public class CommService(HttpClient http)
+namespace BlazorServer.Services
 {
-    private readonly HttpClient _http = http;
-
-    public record PaginatedResult<T>(List<T> Items, int TotalCount);
-
-    /// <summary>Gets a page of communications.</summary>
-    public async Task<PaginatedResult<Dto>> GetPaginatedAsync(int page, int pageSize)
+    public class CommService(HttpClient http)
     {
-        var url = $"api/communications?page={page}&pageSize={pageSize}";
-        var response = await _http.GetFromJsonAsync<PaginatedResult<Dto>>(url);
-        return response ?? new PaginatedResult<Dto>([], 0);
-    }
+        private readonly HttpClient _http = http;
 
-    /// <summary>Gets all communications (for dropdowns, etc.).</summary>
-    public async Task<List<Dto>> GetAllAsync()
-        => await _http.GetFromJsonAsync<List<Dto>>("api/communications/all")
-           ?? [];
-
-    /// <summary>Gets one communication’s details.</summary>
-    public async Task<DetailsDto> GetByIdAsync(Guid id)
-        => await _http.GetFromJsonAsync<DetailsDto>($"api/communications/{id}")
-           ?? throw new InvalidOperationException("Communication not found");
-
-    /// <summary>Creates a new communication.</summary>
-    public async Task CreateAsync(CommunicationCreateDto dto)
-    {
-        var res = await _http.PostAsJsonAsync("api/communications", dto);
-        res.EnsureSuccessStatusCode();
-    }
-
-    /// <summary>Updates a communication’s status.</summary>
-    public async Task UpdateAsync(CommunicationUpdateDto dto)
-    {
-        var res = await _http.PutAsJsonAsync("api/communications", dto);
-        res.EnsureSuccessStatusCode();
-    }
-
-    /// <summary>Deletes (soft) a communication.</summary>
-    public async Task DeleteAsync(CommunicationDeleteDto dto)
-    {
-        var req = new HttpRequestMessage(HttpMethod.Delete, "api/communications")
+        /// <summary>
+        /// Fetches a page of communications along with the total count.
+        /// </summary>
+        public async Task<(IEnumerable<Dto> Items, int TotalCount)> GetPaginatedAsync(int page, int pageSize)
         {
-            Content = JsonContent.Create(dto)
-        };
-        var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
+            var url = $"api/comm?page={page}&pageSize={pageSize}";
+
+            // Internal type to bind the API's JSON shape
+            var wrapper = await _http.GetFromJsonAsync<PaginatedResultWrapper>(url)
+                          ?? new PaginatedResultWrapper();
+
+            return (wrapper.Items, wrapper.TotalCount);
+        }
+
+        /// <summary>
+        /// Fetches all communications (unpaginated).
+        /// </summary>
+        public async Task<IEnumerable<Dto>> GetAllAsync()
+        {
+            var result = await _http.GetFromJsonAsync<IEnumerable<Dto>>("api/comm/all");
+            return result ?? Array.Empty<Dto>();
+        }
+
+        /// <summary>
+        /// Fetches the details (including history) of one communication.
+        /// </summary>
+        public async Task<DetailsDto> GetByIdAsync(Guid id)
+        {
+            var result = await _http.GetFromJsonAsync<DetailsDto>($"api/comm/{id}");
+            if (result == null)
+                throw new InvalidOperationException($"Communication with ID {id} not found.");
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new communication.
+        /// </summary>
+        public async Task CreateAsync(CommunicationCreateDto dto)
+        {
+            var response = await _http.PostAsJsonAsync("api/comm", dto);
+            response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Updates a communication's status.
+        /// </summary>
+        public async Task UpdateAsync(CommunicationUpdateDto dto)
+        {
+            var response = await _http.PutAsJsonAsync("api/comm", dto);
+            response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Soft‐deletes a communication.
+        /// </summary>
+        public async Task DeleteAsync(CommunicationDeleteDto dto)
+        {
+            var req = new HttpRequestMessage(HttpMethod.Delete, "api/comm")
+            {
+                Content = JsonContent.Create(dto)
+            };
+            var response = await _http.SendAsync(req);
+            response.EnsureSuccessStatusCode();
+        }
+
+        // Internal class to match the API's paginated response shape.
+        private class PaginatedResultWrapper
+        {
+            public List<Dto> Items { get; set; } = new();
+            public int TotalCount { get; set; }
+        }
     }
 }

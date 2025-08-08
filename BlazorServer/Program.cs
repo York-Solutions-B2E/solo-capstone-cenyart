@@ -1,7 +1,11 @@
 using BlazorServer.Services;
-using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>();
+}
 
 // 1️⃣ Aspire defaults (loads WebApiEndpoint, RabbitMQ, etc.)
 builder.AddServiceDefaults();
@@ -10,14 +14,11 @@ builder.AddServiceDefaults();
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();   // required for blazor.server.js
 
-// 3️⃣ MudBlazor
-builder.Services.AddMudServices();
 
-// 4️⃣ HTTP Client / ApiServices (typed clients)
 var apiBase = builder.Configuration["WebApiEndpointHttps"];
 if (string.IsNullOrWhiteSpace(apiBase))
 {
-    throw new InvalidOperationException("API URL is missing. Please set 'WebApiEndpointHttps' in appsettings.json or environment variables.");
+    throw new InvalidOperationException("Missing WebApiEndpointHttps");
 }
 builder.Services.AddHttpClient<CommService>(client =>
 {
@@ -32,12 +33,8 @@ builder.Services.AddHttpClient<StatusService>(client =>
     client.BaseAddress = new Uri(apiBase);
 });
 
-
-// ... other services ...
-
 var app = builder.Build();
 
-// 5️⃣ Middleware
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -48,7 +45,10 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-// 6️⃣ Endpoint mapping
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
 app.MapRazorPages();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");

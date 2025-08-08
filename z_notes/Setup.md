@@ -74,3 +74,5 @@ dotnet run --project BlazorServer
 dotnet clean
 dotnet build
 ```
+
+[Cmd+Shift+P] [Developer: Reload Window]

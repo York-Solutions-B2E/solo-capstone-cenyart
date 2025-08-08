@@ -76,8 +76,8 @@ public static class DatabaseSeeder
             var typeCodes = new[] { "EOB", "EOP", "ID_CARD" };
             var communications = new List<Communication>();
 
-            // create 10 communications, cycling through the three types
-            for (int i = 0; i < 10; i++)
+            // create 30 communications, cycling through the three types
+            for (int i = 0; i < 30; i++)
             {
                 var typeCode = typeCodes[i % typeCodes.Length];
                 communications.Add(new Communication

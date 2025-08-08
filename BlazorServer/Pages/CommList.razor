@@ -1,79 +1,102 @@
-
 @page "/commlist"
-@namespace BlazorServer.Pages
 @inject CommService CommService
+@inject NavigationManager Nav
 
-<div class="row">
-  <div class="col-4">
-    <h5>Communications</h5>
-    @if (_items?.Any() != true)
-    {
-      <p><em>Loading or no communications found...</em></p>
-    }
-    else
-    {
-      <ul class="list-group">
-        @foreach (var c in _items)
-        {
-          <li class="list-group-item @(c.Id == _selectedId ? "active" : "")"
-              @onclick="() => Select(c.Id)">
-            @c.Title
-          </li>
-        }
-      </ul>
-    }
-    <button class="btn btn-primary mt-2" @onclick="New">+ Add</button>
-  </div>
+<h3>Communications</h3>
 
-  <div class="col-8">
-    @if (_showDetails)
-    {
-      <CommDetails Comm="_details" OnClose="CloseDetails" />
-    }
-    else
-    {
-      <CommForm NewModel="_createDto"
-                EditModel="_details"
-                OnSaved="Reload"
-                OnCanceled="CancelForm" />
-    }
-  </div>
-</div>
+@if (_loading)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-dark table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Last Updated</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in _items)
+            {
+                <tr>
+                    <td>@c.Title</td>
+                    <td>@c.TypeCode</td>
+                    <td>@c.CurrentStatus</td>
+                    <td>@c.LastUpdatedUtc.ToLocalTime()</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary"
+                                @onclick="() => ViewDetails(c.Id)">
+                            Details
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="d-flex justify-content-between">
+        <button class="btn btn-secondary" @onclick="Previous" disabled="@(_page == 1)">
+            &larr; Previous
+        </button>
+        <span>Page @_page of @_totalPages</span>
+        <button class="btn btn-secondary" @onclick="Next" disabled="@(_page >= _totalPages)">
+            Next &rarr;
+        </button>
+    </div>
+}
 
 @code {
+    private int _page = 1;
+    private const int _pageSize = 10;
+    private int _totalCount;
+    private int _totalPages;
+    private bool _loading;
     private List<Dto> _items = new();
-    private Guid _selectedId;
-    private bool _showDetails;
-    private CommunicationCreateDto _createDto = new("", "");
-    private DetailsDto _details = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        await Reload();
+        await LoadPageAsync();
     }
 
-    private async Task Reload()
+    private async Task LoadPageAsync()
     {
-        var (items, total) = await CommService.GetPaginatedAsync(page: 1, pageSize: 50);
-        _items = items.ToList();
-        _showDetails = false;
+        _loading = true;
+        StateHasChanged();
+
+        var (items, total) = await CommService.GetPaginatedAsync(_page, _pageSize);
+        _items = items.ToList();           // convert IEnumerable<Dto> to List<Dto>
+        _totalCount = total;
+        _totalPages = (_totalCount + _pageSize - 1) / _pageSize;
+
+        _loading = false;
         StateHasChanged();
     }
 
-    private async Task Select(Guid id)
+    private async Task Previous()
     {
-        _selectedId = id;
-        _details = await CommService.GetByIdAsync(id);
-        _showDetails = true;
-        StateHasChanged();
+        if (_page > 1)
+        {
+            _page--;
+            await LoadPageAsync();
+        }
     }
 
-    private void New()
+    private async Task Next()
     {
-        _createDto = new CommunicationCreateDto("", "");
-        _showDetails = false;
+        if (_page < _totalPages)
+        {
+            _page++;
+            await LoadPageAsync();
+        }
     }
 
-    private void CloseDetails() => _showDetails = false;
-    private void CancelForm()   => _showDetails = false;
+    private void ViewDetails(Guid id)
+    {
+        Nav.NavigateTo($"/details/{id}");
+    }
 }
