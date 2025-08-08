@@ -1,51 +1,71 @@
 
 namespace WebApi.Data;
 
-public class CommunicationType
+/// <summary>
+/// Canonical/global status (e.g. "Shipped"). Not deletable by business rules.
+/// </summary>
+public class GlobalStatus
 {
-    public required string TypeCode { get; set; }
-
+    public required string Code { get; set; }         // PK
     public required string DisplayName { get; set; }
-    public bool IsActive { get; set; } = true;
+    public string Phase { get; set; } = "Other";
 
-    public ICollection<CommunicationTypeStatus> ValidStatuses { get; set; } = [];
-    public ICollection<Communication> Communications { get; set; } = [];
+    public ICollection<Status> StatusLinks { get; set; } = new List<Status>();
 }
 
-public class CommunicationTypeStatus
+/// <summary>
+/// Communication Type (EOB, EOP, IDCard...). Soft-deletable via IsActive.
+/// </summary>
+public class Type
 {
-    public Guid Id { get; set; }
+    public required string TypeCode { get; set; }     // PK
+    public required string DisplayName { get; set; }
+    public bool IsActive { get; set; } = true;        // soft-delete flag
 
-    public required string TypeCode { get; set; }
-    public required string StatusCode { get; set; }
-    public required string Description { get; set; }
-    public bool IsActive { get; set; } = true;
-
-    public CommunicationType CommunicationType { get; set; } = null!;
+    public ICollection<Status> ValidStatuses { get; set; } = new List<Status>();
+    public ICollection<Communication> Communications { get; set; } = new List<Communication>();
 }
 
+/// <summary>
+/// Join record: which GlobalStatus codes are valid for a Type.
+/// Soft-deletable via IsActive.
+/// </summary>
+public class Status
+{
+    public Guid Id { get; set; }                      // PK
+    public required string TypeCode { get; set; }     // FK -> Type.TypeCode
+    public required string StatusCode { get; set; }   // FK -> GlobalStatus.Code
+    public string? Description { get; set; }
+    public bool IsActive { get; set; } = true;        // soft-delete flag
+
+    public Type Type { get; set; } = null!;
+    public GlobalStatus GlobalStatus { get; set; } = null!;
+}
+
+/// <summary>
+/// Main communication entity. NOT deletable by DB rules (no cascade).
+/// </summary>
 public class Communication
 {
-    public Guid Id { get; set; }
-
+    public Guid Id { get; set; }                      // PK
     public required string Title { get; set; }
-    public required string TypeCode { get; set; }
-    public required string CurrentStatus { get; set; }
-    public DateTime LastUpdatedUtc { get; set; }
-    public bool IsActive { get; set; } = true;
+    public required string TypeCode { get; set; }     // FK -> Type.TypeCode
+    public required string CurrentStatusCode { get; set; } // FK -> GlobalStatus.Code
+    public DateTime LastUpdatedUtc { get; set; } = DateTime.UtcNow;
 
-    public CommunicationType CommunicationType { get; set; } = null!;
-    public ICollection<CommunicationStatusHistory> StatusHistory { get; set; } = [];
+    public Type Type { get; set; } = null!;
+    public ICollection<StatusHistory> StatusHistory { get; set; } = new List<StatusHistory>();
 }
 
-public class CommunicationStatusHistory
+/// <summary>
+/// Status history entries for a communication. NOT deletable by DB rules.
+/// </summary>
+public class StatusHistory
 {
-    public Guid Id { get; set; }
-
-    public Guid CommunicationId { get; set; }
-    public required string StatusCode { get; set; }
-    public DateTime OccurredUtc { get; set; }
-    public bool IsActive { get; set; } = true;
+    public Guid Id { get; set; }                      // PK
+    public Guid CommunicationId { get; set; }         // FK -> Communication.Id
+    public required string StatusCode { get; set; }   // GlobalStatus.Code
+    public DateTime OccurredUtc { get; set; } = DateTime.UtcNow;
 
     public Communication Communication { get; set; } = null!;
 }
