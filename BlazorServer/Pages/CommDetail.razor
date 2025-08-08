@@ -1,0 +1,70 @@
+@page "/details/{Id:guid}"
+@inject CommService CommService
+@inject NavigationManager Nav
+
+<h3>Communication Details</h3>
+
+@if (_loading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (_comm == null)
+{
+    <div class="alert alert-danger">Communication not found.</div>
+}
+else
+{
+    <!-- Header Info -->
+    <div class="mb-4">
+        <h4>@_comm.Title</h4>
+        <p><strong>Type:</strong> @_comm.TypeCode</p>
+        <p><strong>Status:</strong> @_comm.CurrentStatus</p>
+        <p><strong>Last Updated:</strong> @_comm.LastUpdatedUtc.ToLocalTime()</p>
+    </div>
+
+    <!-- Timeline -->
+    <h5>Status History</h5>
+    <ul class="list-group mb-4">
+        @foreach (var h in _comm.StatusHistory.OrderBy(s => s.OccurredUtc))
+        {
+            <li class="list-group-item d-flex justify-content-between">
+                <span>@h.StatusCode</span>
+                <span class="text-muted">@h.OccurredUtc.ToLocalTime()</span>
+            </li>
+        }
+    </ul>
+
+    <button class="btn btn-secondary" @onclick="GoBack">
+        &larr; Back to List
+    </button>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private DetailsDto? _comm;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDetailsAsync();
+    }
+
+    private async Task LoadDetailsAsync()
+    {
+        _loading = true;
+
+        try
+        {
+            _comm = await CommService.GetByIdAsync(Id);
+        }
+        catch
+        {
+            _comm = null;
+        }
+
+        _loading = false;
+    }
+
+    private void GoBack() => Nav.NavigateTo("/commlist");
+}

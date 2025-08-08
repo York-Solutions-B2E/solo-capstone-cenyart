@@ -6,7 +6,7 @@ namespace Webapi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class StatusesController(IStatusService svc) : ControllerBase
+public class StatusController(IStatusService svc) : ControllerBase
 {
     [HttpGet("{typeCode}")]
     public Task<IEnumerable<StatusDto>> GetByType(string typeCode) => svc.GetByTypeAsync(typeCode);

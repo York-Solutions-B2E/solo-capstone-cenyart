@@ -8,24 +8,24 @@ public class StatusService(HttpClient http)
 
     /// <summary>Gets all statuses valid for a given type.</summary>
     public async Task<List<StatusDto>> GetByTypeAsync(string typeCode)
-        => await _http.GetFromJsonAsync<List<StatusDto>>($"api/statuses/{typeCode}")
+        => await _http.GetFromJsonAsync<List<StatusDto>>($"api/status/{typeCode}")
            ?? [];
 
     public async Task AddAsync(StatusCreateDto dto)
     {
-        var res = await _http.PostAsJsonAsync("api/statuses", dto);
+        var res = await _http.PostAsJsonAsync("api/status", dto);
         res.EnsureSuccessStatusCode();
     }
 
     public async Task UpdateAsync(StatusUpdateDto dto)
     {
-        var res = await _http.PutAsJsonAsync("api/statuses", dto);
+        var res = await _http.PutAsJsonAsync("api/status", dto);
         res.EnsureSuccessStatusCode();
     }
 
     public async Task DeleteAsync(StatusDeleteDto dto)
     {
-        var req = new HttpRequestMessage(HttpMethod.Delete, "api/statuses")
+        var req = new HttpRequestMessage(HttpMethod.Delete, "api/status")
         {
             Content = JsonContent.Create(dto)
         };

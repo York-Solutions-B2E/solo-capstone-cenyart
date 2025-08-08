@@ -2,7 +2,12 @@
 @inject CommService CommService
 @inject NavigationManager Nav
 
-<h3>Communications</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Communications</h3>
+    <button class="btn btn-success" @onclick="GoToAdd">
+        + Add Communication
+    </button>
+</div>
 
 @if (_loading)
 {
@@ -29,8 +34,8 @@ else
                     <td>@c.CurrentStatus</td>
                     <td>@c.LastUpdatedUtc.ToLocalTime()</td>
                     <td>
-                        <button class="btn btn-sm btn-primary"
-                                @onclick="() => ViewDetails(c.Id)">
+                        <button class="btn btn-sm btn-primary" 
+                                @onclick="() => GoToDetails(c.Id)">
                             Details
                         </button>
                     </td>
@@ -58,23 +63,16 @@ else
     private bool _loading;
     private List<Dto> _items = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadPageAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadPageAsync();
 
     private async Task LoadPageAsync()
     {
         _loading = true;
-        StateHasChanged();
-
         var (items, total) = await CommService.GetPaginatedAsync(_page, _pageSize);
-        _items = items.ToList();           // convert IEnumerable<Dto> to List<Dto>
+        _items = items.ToList();
         _totalCount = total;
         _totalPages = (_totalCount + _pageSize - 1) / _pageSize;
-
         _loading = false;
-        StateHasChanged();
     }
 
     private async Task Previous()
@@ -95,8 +93,6 @@ else
         }
     }
 
-    private void ViewDetails(Guid id)
-    {
-        Nav.NavigateTo($"/details/{id}");
-    }
+    private void GoToAdd() => Nav.NavigateTo("/commadd");
+    private void GoToDetails(Guid id) => Nav.NavigateTo($"/details/{id}");
 }

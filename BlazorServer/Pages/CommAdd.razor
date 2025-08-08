@@ -1,0 +1,71 @@
+@page "/commadd"
+@inject CommService CommService
+@inject TypeService TypeService
+@inject NavigationManager Nav
+
+<h3>Add Communication</h3>
+
+<EditForm Model="@_model" OnValidSubmit="HandleCreate">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Title</label>
+        <InputText @bind-Value="_model.Title" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Type</label>
+        <InputSelect @bind-Value="_model.TypeCode" class="form-select">
+            <option value="">-- select --</option>
+            @foreach (var t in _types)
+            {
+                <option value="@t.TypeCode">@t.DisplayName</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <button type="button"
+                class="btn btn-secondary"
+                @onclick="GoBack">
+            ← Back
+        </button>
+
+        <button type="submit"
+                class="btn btn-success"
+                disabled="@(!IsValid)">
+            Create
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    // A simple mutable model for binding
+    private class CommAddModel
+    {
+        public string Title { get; set; } = "";
+        public string TypeCode { get; set; } = "";
+    }
+
+    private CommAddModel _model = new();
+    private List<TypeDto> _types = new();
+
+    private bool IsValid =>
+        !string.IsNullOrWhiteSpace(_model.Title) &&
+        !string.IsNullOrWhiteSpace(_model.TypeCode);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _types = (await TypeService.GetAllAsync()).ToList();
+    }
+
+    private async Task HandleCreate()
+    {
+        var dto = new CommunicationCreateDto(_model.TypeCode, _model.Title);
+        await CommService.CreateAsync(dto);
+        Nav.NavigateTo("/commlist");
+    }
+
+    private void GoBack() => Nav.NavigateTo("/commlist");
+}

@@ -1,38 +1,64 @@
 using Shared.Dtos;
 
-namespace BlazorServer.Services;
-
-public class TypeService(HttpClient http)
+namespace BlazorServer.Services
 {
-    private readonly HttpClient _http = http;
-
-    public async Task<List<TypeDto>> GetAllAsync()
-        => await _http.GetFromJsonAsync<List<TypeDto>>("api/types")
-           ?? [];
-
-    public async Task<TypeDetailsDto> GetByCodeAsync(string typeCode)
-        => await _http.GetFromJsonAsync<TypeDetailsDto>($"api/types/{typeCode}")
-           ?? throw new InvalidOperationException("Type not found");
-
-    public async Task CreateAsync(TypeCreateDto dto)
+    public class TypeService(HttpClient http)
     {
-        var res = await _http.PostAsJsonAsync("api/types", dto);
-        res.EnsureSuccessStatusCode();
-    }
+        private readonly HttpClient _http = http;
 
-    public async Task UpdateAsync(TypeUpdateDto dto)
-    {
-        var res = await _http.PutAsJsonAsync("api/types", dto);
-        res.EnsureSuccessStatusCode();
-    }
-
-    public async Task DeleteAsync(TypeDeleteDto dto)
-    {
-        var req = new HttpRequestMessage(HttpMethod.Delete, "api/types")
+        /// <summary>
+        /// Fetches all communication types.
+        /// </summary>
+        public async Task<IEnumerable<TypeDto>> GetAllAsync()
         {
-            Content = JsonContent.Create(dto)
-        };
-        var res = await _http.SendAsync(req);
-        res.EnsureSuccessStatusCode();
+            var result = await _http.GetFromJsonAsync<IEnumerable<TypeDto>>("api/type");
+            return result ?? Array.Empty<TypeDto>();
+        }
+
+        /// <summary>
+        /// Fetch details about a single type, including its valid statuses.
+        /// </summary>
+        public async Task<TypeDetailsDto> GetByCodeAsync(string typeCode)
+        {
+            if (string.IsNullOrWhiteSpace(typeCode))
+                throw new ArgumentException("Type code is required", nameof(typeCode));
+
+            var result = await _http.GetFromJsonAsync<TypeDetailsDto>($"api/type/{typeCode}");
+            if (result == null)
+                throw new InvalidOperationException($"Type '{typeCode}' not found.");
+
+            return result;
+        }
+
+        /// <summary>
+        /// Creates a new communication type.
+        /// </summary>
+        public async Task CreateAsync(TypeCreateDto dto)
+        {
+            var response = await _http.PostAsJsonAsync("api/type", dto);
+            response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Updates an existing communication type.
+        /// </summary>
+        public async Task UpdateAsync(TypeUpdateDto dto)
+        {
+            var response = await _http.PutAsJsonAsync("api/type", dto);
+            response.EnsureSuccessStatusCode();
+        }
+
+        /// <summary>
+        /// Deletes a communication type.
+        /// </summary>
+        public async Task DeleteAsync(TypeDeleteDto dto)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Delete, "api/type")
+            {
+                Content = JsonContent.Create(dto)
+            };
+            var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+        }
     }
 }
