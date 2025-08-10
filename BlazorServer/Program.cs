@@ -28,7 +28,7 @@ builder.Services.AddHttpClient<TypeService>(client =>
 {
     client.BaseAddress = new Uri(apiBase);
 });
-builder.Services.AddHttpClient<StatusService>(client =>
+builder.Services.AddHttpClient<GlobalStatusService>(client =>
 {
     client.BaseAddress = new Uri(apiBase);
 });

@@ -1,64 +1,44 @@
 using Shared.Dtos;
 
-namespace BlazorServer.Services
+namespace BlazorServer.Services;
+
+public class TypeService(HttpClient httpClient)
 {
-    public class TypeService(HttpClient http)
+    private readonly HttpClient _httpClient = httpClient;
+
+    public async Task<List<TypeDto>> GetAllTypesAsync()
     {
-        private readonly HttpClient _http = http;
+        var result = await _httpClient.GetFromJsonAsync<List<TypeDto>>("api/type");
+        return result ?? new List<TypeDto>();
+    }
 
-        /// <summary>
-        /// Fetches all communication types.
-        /// </summary>
-        public async Task<IEnumerable<TypeDto>> GetAllAsync()
-        {
-            var result = await _http.GetFromJsonAsync<IEnumerable<TypeDto>>("api/type");
-            return result ?? Array.Empty<TypeDto>();
-        }
+    public async Task<TypeDetailsDto?> GetTypeByCodeAsync(string typeCode)
+    {
+        return await _httpClient.GetFromJsonAsync<TypeDetailsDto>($"api/type/{typeCode}");
+    }
 
-        /// <summary>
-        /// Fetch details about a single type, including its valid statuses.
-        /// </summary>
-        public async Task<TypeDetailsDto> GetByCodeAsync(string typeCode)
-        {
-            if (string.IsNullOrWhiteSpace(typeCode))
-                throw new ArgumentException("Type code is required", nameof(typeCode));
+    public async Task CreateTypeAsync(CreateTypePayload payload)
+    {
+        var response = await _httpClient.PostAsJsonAsync("api/type", payload);
+        response.EnsureSuccessStatusCode();
+    }
 
-            var result = await _http.GetFromJsonAsync<TypeDetailsDto>($"api/type/{typeCode}");
-            if (result == null)
-                throw new InvalidOperationException($"Type '{typeCode}' not found.");
+    public async Task UpdateTypeAsync(UpdateTypePayload payload)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"api/type/{payload.TypeCode}", payload);
+        response.EnsureSuccessStatusCode();
+    }
 
-            return result;
-        }
+    public async Task SoftDeleteTypeAsync(DeleteTypePayload payload)
+    {
+        var response = await _httpClient.DeleteAsync($"api/type/{payload.TypeCode}");
+        response.EnsureSuccessStatusCode();
+    }
 
-        /// <summary>
-        /// Creates a new communication type.
-        /// </summary>
-        public async Task CreateAsync(TypeCreateDto dto)
-        {
-            var response = await _http.PostAsJsonAsync("api/type", dto);
-            response.EnsureSuccessStatusCode();
-        }
-
-        /// <summary>
-        /// Updates an existing communication type.
-        /// </summary>
-        public async Task UpdateAsync(TypeUpdateDto dto)
-        {
-            var response = await _http.PutAsJsonAsync("api/type", dto);
-            response.EnsureSuccessStatusCode();
-        }
-
-        /// <summary>
-        /// Deletes a communication type.
-        /// </summary>
-        public async Task DeleteAsync(TypeDeleteDto dto)
-        {
-            var request = new HttpRequestMessage(HttpMethod.Delete, "api/type")
-            {
-                Content = JsonContent.Create(dto)
-            };
-            var response = await _http.SendAsync(request);
-            response.EnsureSuccessStatusCode();
-        }
+    public async Task<bool> ValidateStatusesForTypeAsync(string typeCode, List<string> statusCodes)
+    {
+        var payload = new ValidateStatusesPayload(typeCode, statusCodes);
+        var response = await _httpClient.PostAsJsonAsync("api/type/validate-statuses", payload);
+        return await response.Content.ReadFromJsonAsync<bool>();
     }
 }

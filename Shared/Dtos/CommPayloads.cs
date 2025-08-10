@@ -21,8 +21,7 @@ public sealed record CreateTypePayload(
 public sealed record UpdateTypePayload(
     string TypeCode,
     string DisplayName,
-    List<string>? AddStatusCodes,
-    List<string>? RemoveStatusCodes
+    List<string>? AllowedStatusCodes
 );
 
 public sealed record DeleteTypePayload(

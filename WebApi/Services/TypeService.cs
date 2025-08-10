@@ -91,54 +91,46 @@ public class TypeService(CommunicationDbContext context) : ITypeService
 
         type.DisplayName = payload.DisplayName;
 
-        // Handle adding allowed statuses
-        if (payload.AddStatusCodes != null && payload.AddStatusCodes.Count != 0)
+        // The full list user wants
+        var newStatusCodes = payload.AllowedStatusCodes ?? new List<string>();
+
+        var existingStatuses = type.ValidStatuses.Where(s => s.IsActive).ToList();
+        var existingStatusCodes = existingStatuses.Select(s => s.StatusCode).ToHashSet();
+
+        // Calculate add and remove sets
+        var toAddCodes = newStatusCodes.Except(existingStatusCodes).ToList();
+        var toRemoveStatuses = existingStatuses.Where(s => !newStatusCodes.Contains(s.StatusCode)).ToList();
+
+        // Add new allowed statuses
+        if (toAddCodes.Count > 0)
         {
-            var existingStatusCodes = type.ValidStatuses
-                .Where(s => s.IsActive)
-                .Select(s => s.StatusCode)
-                .ToHashSet();
+            var globalStatuses = await _context.GlobalStatuses
+                .Where(g => toAddCodes.Contains(g.StatusCode))
+                .ToListAsync();
 
-            var addCodes = payload.AddStatusCodes
-                .Where(c => !existingStatusCodes.Contains(c))
-                .ToList();
-
-            if (addCodes.Count != 0)
+            foreach (var gs in globalStatuses)
             {
-                var globalStatuses = await _context.GlobalStatuses
-                    .Where(g => addCodes.Contains(g.StatusCode))
-                    .ToListAsync();
-
-                foreach (var gs in globalStatuses)
+                var newStatus = new Status
                 {
-                    var newStatus = new Status
-                    {
-                        TypeCode = type.TypeCode,
-                        StatusCode = gs.StatusCode,
-                        Description = gs.Notes,
-                        IsActive = true,
-                        GlobalStatus = gs
-                    };
-                    type.ValidStatuses.Add(newStatus);
-                }
+                    TypeCode = type.TypeCode,
+                    StatusCode = gs.StatusCode,
+                    Description = gs.Notes,
+                    IsActive = true,
+                    GlobalStatus = gs
+                };
+                type.ValidStatuses.Add(newStatus);
             }
         }
 
-        // Handle removing allowed statuses (soft delete)
-        if (payload.RemoveStatusCodes != null && payload.RemoveStatusCodes.Count != 0)
+        // Soft-delete removed allowed statuses
+        foreach (var status in toRemoveStatuses)
         {
-            var toRemove = type.ValidStatuses
-                .Where(s => payload.RemoveStatusCodes.Contains(s.StatusCode) && s.IsActive)
-                .ToList();
-
-            foreach (var status in toRemove)
-            {
-                status.IsActive = false;
-            }
+            status.IsActive = false;
         }
 
         await _context.SaveChangesAsync();
     }
+
 
     public async Task SoftDeleteTypeAsync(DeleteTypePayload payload)
     {
