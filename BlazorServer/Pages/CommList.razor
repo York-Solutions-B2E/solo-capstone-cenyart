@@ -13,6 +13,10 @@
 {
     <p><em>Loading...</em></p>
 }
+else if (!_items.Any())
+{
+    <div class="alert alert-info">No communications found.</div>
+}
 else
 {
     <table class="table table-dark table-striped">
@@ -31,11 +35,10 @@ else
                 <tr>
                     <td>@c.Title</td>
                     <td>@c.TypeCode</td>
-                    <td>@c.CurrentStatus</td>
-                    <td>@c.LastUpdatedUtc.ToLocalTime()</td>
+                    <td>@c.CurrentStatusCode</td>
+                    <td>@c.LastUpdatedUtc.ToLocalTime().ToString("g")</td>
                     <td>
-                        <button class="btn btn-sm btn-primary" 
-                                @onclick="() => GoToDetails(c.Id)">
+                        <button class="btn btn-sm btn-primary" @onclick="() => GoToDetails(c.Id)">
                             Details
                         </button>
                     </td>
@@ -45,54 +48,58 @@ else
     </table>
 
     <div class="d-flex justify-content-between">
-        <button class="btn btn-secondary" @onclick="Previous" disabled="@(_page == 1)">
+        <button class="btn btn-secondary" @onclick="Previous" disabled="@(_pageNumber == 1)">
             &larr; Previous
         </button>
-        <span>Page @_page of @_totalPages</span>
-        <button class="btn btn-secondary" @onclick="Next" disabled="@(_page >= _totalPages)">
+        <span>Page @_pageNumber of @_totalPages</span>
+        <button class="btn btn-secondary" @onclick="Next" disabled="@(_pageNumber >= _totalPages)">
             Next &rarr;
         </button>
     </div>
 }
 
 @code {
-    private int _page = 1;
+    private int _pageNumber = 1;
     private const int _pageSize = 10;
     private int _totalCount;
     private int _totalPages;
     private bool _loading;
-    private List<Dto> _items = new();
+    private List<CommDto> _items = new();
 
-    protected override async Task OnInitializedAsync() => await LoadPageAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPageAsync();
+    }
 
     private async Task LoadPageAsync()
     {
         _loading = true;
-        var (items, total) = await CommService.GetPaginatedAsync(_page, _pageSize);
-        _items = items.ToList();
-        _totalCount = total;
+        var result = await CommService.GetCommunicationsAsync(_pageNumber, _pageSize);
+        _items = result.Items;
+        _totalCount = result.TotalCount;
         _totalPages = (_totalCount + _pageSize - 1) / _pageSize;
         _loading = false;
     }
 
     private async Task Previous()
     {
-        if (_page > 1)
+        if (_pageNumber > 1)
         {
-            _page--;
+            _pageNumber--;
             await LoadPageAsync();
         }
     }
 
     private async Task Next()
     {
-        if (_page < _totalPages)
+        if (_pageNumber < _totalPages)
         {
-            _page++;
+            _pageNumber++;
             await LoadPageAsync();
         }
     }
 
     private void GoToAdd() => Nav.NavigateTo("/commadd");
-    private void GoToDetails(Guid id) => Nav.NavigateTo($"/details/{id}");
+
+    private void GoToDetails(Guid id) => Nav.NavigateTo($"/commdetails/{id}");
 }

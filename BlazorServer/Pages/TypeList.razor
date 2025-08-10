@@ -4,9 +4,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Communication Types</h3>
-    <button class="btn btn-success" @onclick="GoToAdd">
-        + Add Type
-    </button>
+    <button class="btn btn-success" @onclick="GoToAdd">+ Add Type</button>
 </div>
 
 @if (_loading)
@@ -45,8 +43,7 @@ else
                         }
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-primary"
-                                @onclick="() => GoToEdit(t.TypeCode)">
+                        <button class="btn btn-sm btn-primary" @onclick="() => GoToEdit(t.TypeCode)">
                             Edit
                         </button>
                     </td>
@@ -63,7 +60,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         _loading = true;
-        _types = (await TypeService.GetAllAsync()).ToList();
+        _types = (await TypeService.GetAllTypesAsync()).ToList();
         _loading = false;
     }
 

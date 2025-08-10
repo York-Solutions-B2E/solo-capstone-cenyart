@@ -1,39 +1,66 @@
 @page "/typeadd"
 @inject TypeService TypeService
+@inject GlobalStatusService GlobalStatusService
 @inject NavigationManager Nav
 
 <h3>Add Communication Type</h3>
 
-<EditForm Model="@_model" OnValidSubmit="HandleCreate">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+@if (_loading)
+{
+    <p><em>Loading global statuses...</em></p>
+}
+else
+{
+    <EditForm Model="@_model" OnValidSubmit="HandleCreate">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
 
-    <div class="mb-3">
-        <label class="form-label">Type Code</label>
-        <InputText @bind-Value="_model.TypeCode" class="form-control" />
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Type Code</label>
+            <InputText @bind-Value="_model.TypeCode" class="form-control" />
+        </div>
 
-    <div class="mb-3">
-        <label class="form-label">Display Name</label>
-        <InputText @bind-Value="_model.DisplayName" class="form-control" />
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Display Name</label>
+            <InputText @bind-Value="_model.DisplayName" class="form-control" />
+        </div>
 
-    <div class="d-flex justify-content-between">
-        <button type="button"
-                class="btn btn-secondary"
-                @onclick="GoBack">
-            ← Back
-        </button>
-        <button type="submit"
-                class="btn btn-success"
-                disabled="@(!IsValid)">
-            Create
-        </button>
-    </div>
-</EditForm>
+        <h5>Allowed Statuses</h5>
+        <p class="text-muted">Select which global statuses should be allowed for this type.</p>
+
+        @if (_globalStatuses?.Any() != true)
+        {
+            <div class="alert alert-info">No global statuses available.</div>
+        }
+        else
+        {
+            <div class="mb-3">
+                @foreach (var status in _globalStatuses)
+                {
+                    <div class="form-check">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="@($"chk_{status.StatusCode}")"
+                            checked="@(_checked.TryGetValue(status.StatusCode, out var val) && val)"
+                            @onchange="(ChangeEventArgs e) => OnCheckboxChanged(status.StatusCode, e?.Value is bool b && b)" />
+                        <label class="form-check-label" for="@($"chk_{status.StatusCode}")">
+                            <strong>@status.StatusCode</strong>
+                            <div class="text-muted">@status.Notes</div>
+                        </label>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary" @onclick="GoBack">← Back</button>
+            <button type="submit" class="btn btn-success" disabled="@(!IsValid)">Create</button>
+        </div>
+    </EditForm>
+}
 
 @code {
-    // mutable backing model
     private class TypeAddModel
     {
         public string TypeCode { get; set; } = "";
@@ -41,14 +68,43 @@
     }
 
     private TypeAddModel _model = new();
+    private List<Shared.Dtos.GlobalStatusDto> _globalStatuses = new();
+    private Dictionary<string, bool> _checked = new();
+    private bool _loading = true;
+
     private bool IsValid =>
         !string.IsNullOrWhiteSpace(_model.TypeCode) &&
         !string.IsNullOrWhiteSpace(_model.DisplayName);
 
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _globalStatuses = await GlobalStatusService.GetAllGlobalStatusesAsync();
+
+        // Initialize all checkboxes unchecked by default
+        _checked = _globalStatuses.ToDictionary(gs => gs.StatusCode, gs => false);
+        _loading = false;
+    }
+
+    private void OnCheckboxChanged(string statusCode, bool isChecked)
+    {
+        _checked[statusCode] = isChecked;
+    }
+
     private async Task HandleCreate()
     {
-        var dto = new TypeCreateDto(_model.TypeCode, _model.DisplayName);
-        await TypeService.CreateAsync(dto);
+        var allowedStatusCodes = _checked
+            .Where(kv => kv.Value)
+            .Select(kv => kv.Key)
+            .ToList();
+
+        var payload = new CreateTypePayload(
+            _model.TypeCode,
+            _model.DisplayName,
+            allowedStatusCodes
+        );
+
+        await TypeService.CreateTypeAsync(payload);
         Nav.NavigateTo("/typelist");
     }
 

@@ -1,4 +1,4 @@
-@page "/details/{Id:guid}"
+@page "/commdetails/{Id:guid}"
 @inject CommService CommService
 @inject NavigationManager Nav
 
@@ -18,8 +18,8 @@ else
     <div class="mb-4">
         <h4>@_comm.Title</h4>
         <p><strong>Type:</strong> @_comm.TypeCode</p>
-        <p><strong>Status:</strong> @_comm.CurrentStatus</p>
-        <p><strong>Last Updated:</strong> @_comm.LastUpdatedUtc.ToLocalTime()</p>
+        <p><strong>Status:</strong> @_comm.CurrentStatusCode</p>
+        <p><strong>Last Updated:</strong> @_comm.LastUpdatedUtc.ToLocalTime().ToString("g")</p>
     </div>
 
     <!-- Timeline -->
@@ -29,7 +29,7 @@ else
         {
             <li class="list-group-item d-flex justify-content-between">
                 <span>@h.StatusCode</span>
-                <span class="text-muted">@h.OccurredUtc.ToLocalTime()</span>
+                <span class="text-muted">@h.OccurredUtc.ToLocalTime().ToString("g")</span>
             </li>
         }
     </ul>
@@ -42,7 +42,7 @@ else
 @code {
     [Parameter] public Guid Id { get; set; }
 
-    private DetailsDto? _comm;
+    private Shared.Dtos.CommDetailsDto? _comm;
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -56,7 +56,7 @@ else
 
         try
         {
-            _comm = await CommService.GetByIdAsync(Id);
+            _comm = await CommService.GetCommunicationByIdAsync(Id);
         }
         catch
         {

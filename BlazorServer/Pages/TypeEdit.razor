@@ -1,6 +1,6 @@
 @page "/typeedit/{TypeCode}"
 @inject TypeService TypeService
-@inject StatusService StatusService
+@inject GlobalStatusService GlobalStatusService
 @inject NavigationManager Nav
 
 <h3>Edit Communication Type</h3>
@@ -29,17 +29,24 @@ else
             <InputText @bind-Value="_editModel.DisplayName" class="form-control" />
         </div>
 
-        <div class="form-check mb-3">
-            <InputCheckbox @bind-Value="_editModel.IsActive" class="form-check-input" />
-            <label class="form-check-label">Active</label>
+        <div class="mb-3">
+            <label class="form-label">Active</label>
+            @if (_typeDetails.IsActive)
+            {
+                <div><span class="badge bg-success">Active</span></div>
+            }
+            else
+            {
+                <div><span class="badge bg-secondary">Inactive</span></div>
+            }
         </div>
 
         <h5>Valid Statuses</h5>
-        <p class="text-muted">Check which statuses are valid for this type. Descriptions shown below.</p>
+        <p class="text-muted">Check which global statuses should be valid for this type. Descriptions shown below.</p>
 
         @if (_statusOptions?.Any() != true)
         {
-            <div class="alert alert-info">No statuses available for this type.</div>
+            <div class="alert alert-info">No global statuses available.</div>
         }
         else
         {
@@ -47,10 +54,15 @@ else
                 @foreach (var s in _statusOptions)
                 {
                     <div class="form-check">
-                        <InputCheckbox @bind-Value="_checked[s.StatusCode]" class="form-check-input" id="@($"chk_{s.StatusCode}")" />
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            id="@($"chk_{s.StatusCode}")"
+                            checked="@(_checked.TryGetValue(s.StatusCode, out var val) && val)"
+                            @onchange="(ChangeEventArgs e) => OnCheckboxChanged(s.StatusCode, e?.Value is bool b && b)" />
                         <label class="form-check-label" for="@($"chk_{s.StatusCode}")">
                             <strong>@s.StatusCode</strong>
-                            <div class="text-muted">@s.Description</div>
+                            <div class="text-muted">@s.Notes</div>
                         </label>
                     </div>
                 }
@@ -79,18 +91,17 @@ else
     {
         public string TypeCode { get; set; } = "";
         public string DisplayName { get; set; } = "";
-        public bool IsActive { get; set; } = true;
     }
 
     private EditModel _editModel = new();
 
-    // Status options to show (description + code)
-    private List<StatusDto> _statusOptions = new();
+    // Status options come from GlobalStatusService
+    private List<GlobalStatusDto> _statusOptions = new();
 
     // Map: statusCode -> currently checked (UI)
     private Dictionary<string, bool> _checked = new();
 
-    // Original mapping: statusCode -> StatusDto (so we can find Id when deleting)
+    // Original allowed statuses for this type (statusCode -> StatusDto)
     private Dictionary<string, StatusDto> _originalMap = new();
 
     // Update enabled only when display name present (type code is required and read-only)
@@ -109,21 +120,29 @@ else
 
         try
         {
-            _typeDetails = await TypeService.GetByCodeAsync(TypeCode);
+            // Get type details (includes ValidStatuses)
+            _typeDetails = await TypeService.GetTypeByCodeAsync(TypeCode);
+
+            if (_typeDetails == null)
+            {
+                _loading = false;
+                return;
+            }
 
             // populate edit model
             _editModel = new EditModel
             {
                 TypeCode = _typeDetails.TypeCode,
-                DisplayName = _typeDetails.DisplayName,
-                IsActive = _typeDetails.IsActive
+                DisplayName = _typeDetails.DisplayName
             };
 
-            // load statuses for this type (used as options for checkboxes)
-            _statusOptions = (await StatusService.GetByTypeAsync(TypeCode)).ToList();
+            // load all global statuses (used as options for checkboxes)
+            _statusOptions = await GlobalStatusService.GetAllGlobalStatusesAsync();
 
-            // build original map and checkbox dictionary
+            // build original map of allowed statuses for this type
             _originalMap = _typeDetails.ValidStatuses.ToDictionary(s => s.StatusCode, s => s);
+
+            // initialize checked dictionary: true if originally allowed
             _checked = _statusOptions.ToDictionary(
                 s => s.StatusCode,
                 s => _originalMap.ContainsKey(s.StatusCode)
@@ -135,9 +154,10 @@ else
         }
 
         _loading = false;
+        StateHasChanged();
     }
 
-    private void ToggleChecked(string statusCode, bool isChecked)
+    private void OnCheckboxChanged(string statusCode, bool isChecked)
     {
         _checked[statusCode] = isChecked;
     }
@@ -146,37 +166,20 @@ else
     {
         if (_typeDetails == null) return;
 
-        // Update the type basic fields first
-        var updateDto = new TypeUpdateDto(_editModel.TypeCode, _editModel.DisplayName, _editModel.IsActive);
-        await TypeService.UpdateAsync(updateDto);
+        // Build full allowed statuses list from checked dictionary
+        var allowed = _checked
+            .Where(kv => kv.Value)
+            .Select(kv => kv.Key)
+            .ToList();
 
-        // Now sync statuses:
-        // - For every status that is checked but not present originally -> Add
-        // - For every status that is unchecked but present originally -> Delete (by Id)
+        var updatePayload = new UpdateTypePayload(
+            _editModel.TypeCode,
+            _editModel.DisplayName,
+            allowed // AllowedStatusCodes
+        );
 
-        foreach (var kv in _checked)
-        {
-            var statusCode = kv.Key;
-            var checkedNow = kv.Value;
-            var existed = _originalMap.ContainsKey(statusCode);
+        await TypeService.UpdateTypeAsync(updatePayload);
 
-            if (checkedNow && !existed)
-            {
-                // Add the status mapping. Use the description from statusOptions if present.
-                var statusDesc = _statusOptions.FirstOrDefault(s => s.StatusCode == statusCode)?.Description ?? statusCode;
-                var createDto = new StatusCreateDto(_editModel.TypeCode, statusCode, statusDesc);
-                await StatusService.AddAsync(createDto);
-            }
-            else if (!checkedNow && existed)
-            {
-                // Delete existing mapping by Id
-                var existing = _originalMap[statusCode];
-                var deleteDto = new StatusDeleteDto(existing.Id);
-                await StatusService.DeleteAsync(deleteDto);
-            }
-        }
-
-        // After successful update, navigate back to type list
         Nav.NavigateTo("/typelist");
     }
 
@@ -184,8 +187,8 @@ else
     {
         if (_typeDetails == null) return;
 
-        var deleteDto = new TypeDeleteDto(_typeDetails.TypeCode);
-        await TypeService.DeleteAsync(deleteDto);
+        var deletePayload = new DeleteTypePayload(_typeDetails.TypeCode);
+        await TypeService.SoftDeleteTypeAsync(deletePayload);
 
         Nav.NavigateTo("/typelist");
     }

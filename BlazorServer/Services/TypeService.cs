@@ -2,43 +2,31 @@ using Shared.Dtos;
 
 namespace BlazorServer.Services;
 
-public class TypeService(HttpClient httpClient)
+public class TypeService(HttpClient http)
 {
-    private readonly HttpClient _httpClient = httpClient;
+    private readonly HttpClient _http = http;
 
     public async Task<List<TypeDto>> GetAllTypesAsync()
-    {
-        var result = await _httpClient.GetFromJsonAsync<List<TypeDto>>("api/type");
-        return result ?? new List<TypeDto>();
-    }
+        => await _http.GetFromJsonAsync<List<TypeDto>>("api/types") ?? new List<TypeDto>();
 
     public async Task<TypeDetailsDto?> GetTypeByCodeAsync(string typeCode)
-    {
-        return await _httpClient.GetFromJsonAsync<TypeDetailsDto>($"api/type/{typeCode}");
-    }
+        => await _http.GetFromJsonAsync<TypeDetailsDto?>($"api/types/{typeCode}");
 
     public async Task CreateTypeAsync(CreateTypePayload payload)
     {
-        var response = await _httpClient.PostAsJsonAsync("api/type", payload);
-        response.EnsureSuccessStatusCode();
+        var resp = await _http.PostAsJsonAsync("api/types", payload);
+        resp.EnsureSuccessStatusCode();
     }
 
     public async Task UpdateTypeAsync(UpdateTypePayload payload)
     {
-        var response = await _httpClient.PutAsJsonAsync($"api/type/{payload.TypeCode}", payload);
-        response.EnsureSuccessStatusCode();
+        var resp = await _http.PutAsJsonAsync($"api/types/{payload.TypeCode}", payload);
+        resp.EnsureSuccessStatusCode();
     }
 
     public async Task SoftDeleteTypeAsync(DeleteTypePayload payload)
     {
-        var response = await _httpClient.DeleteAsync($"api/type/{payload.TypeCode}");
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task<bool> ValidateStatusesForTypeAsync(string typeCode, List<string> statusCodes)
-    {
-        var payload = new ValidateStatusesPayload(typeCode, statusCodes);
-        var response = await _httpClient.PostAsJsonAsync("api/type/validate-statuses", payload);
-        return await response.Content.ReadFromJsonAsync<bool>();
+        var resp = await _http.DeleteAsync($"api/types/{payload.TypeCode}");
+        resp.EnsureSuccessStatusCode();
     }
 }

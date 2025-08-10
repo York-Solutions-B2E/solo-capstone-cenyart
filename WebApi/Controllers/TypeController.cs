@@ -2,96 +2,59 @@ using Microsoft.AspNetCore.Mvc;
 using Shared.Dtos;
 using Shared.Interfaces;
 
-namespace WebApi.Controllers
+namespace WebApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]s")] // -> "api/types"
+public class TypeController(ITypeService typeService) : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class TypeController(ITypeService typeService) : ControllerBase
+    private readonly ITypeService _typeService = typeService;
+
+    // GET api/types
+    [HttpGet]
+    public async Task<ActionResult<List<TypeDto>>> GetAll()
     {
-        private readonly ITypeService _typeService = typeService;
+        var list = await _typeService.GetAllTypesAsync();
+        return Ok(list);
+    }
 
-        // GET: api/type
-        [HttpGet]
-        public async Task<ActionResult<List<TypeDto>>> GetAllTypes()
-        {
-            var types = await _typeService.GetAllTypesAsync();
-            return Ok(types);
-        }
+    // GET api/types/{typeCode}
+    [HttpGet("{typeCode}")]
+    public async Task<ActionResult<TypeDetailsDto?>> GetByCode(string typeCode)
+    {
+        var dto = await _typeService.GetTypeByCodeAsync(typeCode);
+        if (dto == null) return NotFound();
+        return Ok(dto);
+    }
 
-        // GET: api/type/{typeCode}
-        [HttpGet("{typeCode}")]
-        public async Task<ActionResult<TypeDetailsDto>> GetTypeByCode(string typeCode)
-        {
-            var type = await _typeService.GetTypeByCodeAsync(typeCode);
-            if (type is null)
-                return NotFound();
+    // POST api/types
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateTypePayload payload)
+    {
+        await _typeService.CreateTypeAsync(payload);
+        return CreatedAtAction(nameof(GetByCode), new { typeCode = payload.TypeCode }, null);
+    }
 
-            return Ok(type);
-        }
+    // PUT api/types/{typeCode}
+    [HttpPut("{typeCode}")]
+    public async Task<IActionResult> UpdateTypeAsync(string typeCode, [FromBody] UpdateTypePayload payload)
+    {
+        if (payload == null || typeCode != payload.TypeCode)
+            return BadRequest();
 
-        // POST: api/type
-        [HttpPost]
-        public async Task<IActionResult> CreateType([FromBody] CreateTypePayload payload)
-        {
-            if (payload == null)
-                return BadRequest("Payload cannot be null.");
+        // if (!await _typeService.ValidateStatusesForTypeAsync(payload.TypeCode, payload.AllowedStatusCodes ?? []))
+        //     return BadRequest("Invalid status codes for this type.");
 
-            try
-            {
-                await _typeService.CreateTypeAsync(payload);
-                return CreatedAtAction(nameof(GetTypeByCode), new { typeCode = payload.TypeCode }, null);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        await _typeService.UpdateTypeAsync(payload);
+        return NoContent();
+    }
 
-        // PUT: api/type
-        [HttpPut]
-        public async Task<IActionResult> UpdateType([FromBody] UpdateTypePayload payload)
-        {
-            if (payload == null)
-                return BadRequest("Payload cannot be null.");
 
-            try
-            {
-                await _typeService.UpdateTypeAsync(payload);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        // DELETE: api/type
-        [HttpDelete]
-        public async Task<IActionResult> SoftDeleteType([FromBody] DeleteTypePayload payload)
-        {
-            if (payload == null)
-                return BadRequest("Payload cannot be null.");
-
-            try
-            {
-                await _typeService.SoftDeleteTypeAsync(payload);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-        // POST: api/type/validate-statuses
-        [HttpPost("validate-statuses")]
-        public async Task<ActionResult<bool>> ValidateStatusesForType([FromBody] ValidateStatusesPayload payload)
-        {
-            if (payload == null || string.IsNullOrEmpty(payload.TypeCode) || payload.StatusCodes == null)
-                return BadRequest("Invalid payload.");
-
-            bool isValid = await _typeService.ValidateStatusesForTypeAsync(payload.TypeCode, payload.StatusCodes);
-            return Ok(isValid);
-        }
+    // DELETE api/types/{typeCode}
+    [HttpDelete("{typeCode}")]
+    public async Task<IActionResult> SoftDelete(string typeCode)
+    {
+        await _typeService.SoftDeleteTypeAsync(new DeleteTypePayload(typeCode));
+        return NoContent();
     }
 }
