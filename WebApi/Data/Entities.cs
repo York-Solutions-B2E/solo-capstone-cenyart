@@ -6,9 +6,9 @@ namespace WebApi.Data;
 /// </summary>
 public class GlobalStatus
 {
-    public required string Code { get; set; }         // PK
-    public required string DisplayName { get; set; }
-    public string Phase { get; set; } = "Other";
+    public required string StatusCode { get; set; }         // PK
+    public required string Phase { get; set; }
+    public required string Notes { get; set; }
 
     public ICollection<Status> StatusLinks { get; set; } = new List<Status>();
 }
@@ -34,8 +34,8 @@ public class Status
 {
     public Guid Id { get; set; }                      // PK
     public required string TypeCode { get; set; }     // FK -> Type.TypeCode
-    public required string StatusCode { get; set; }   // FK -> GlobalStatus.Code
-    public string? Description { get; set; }
+    public required string StatusCode { get; set; }   // FK -> GlobalStatus.StatusCode
+    public required string Description { get; set; }
     public bool IsActive { get; set; } = true;        // soft-delete flag
 
     public Type Type { get; set; } = null!;
@@ -50,10 +50,10 @@ public class Communication
     public Guid Id { get; set; }                      // PK
     public required string Title { get; set; }
     public required string TypeCode { get; set; }     // FK -> Type.TypeCode
-    public required string CurrentStatusCode { get; set; } // FK -> GlobalStatus.Code
+    public required string CurrentStatusCode { get; set; } // FK -> GlobalStatus.StatusCode
     public DateTime LastUpdatedUtc { get; set; } = DateTime.UtcNow;
 
-    public Type Type { get; set; } = null!;
+    public Type? Type { get; set; }     // optional to handle soft delete
     public ICollection<StatusHistory> StatusHistory { get; set; } = new List<StatusHistory>();
 }
 
@@ -64,7 +64,7 @@ public class StatusHistory
 {
     public Guid Id { get; set; }                      // PK
     public Guid CommunicationId { get; set; }         // FK -> Communication.Id
-    public required string StatusCode { get; set; }   // GlobalStatus.Code
+    public required string StatusCode { get; set; }   // GlobalStatus.StatusCode
     public DateTime OccurredUtc { get; set; } = DateTime.UtcNow;
 
     public Communication Communication { get; set; } = null!;

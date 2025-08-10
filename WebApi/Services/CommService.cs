@@ -5,91 +5,99 @@ using WebApi.Data;
 
 namespace WebApi.Services;
 
-public class CommService(CommunicationDbContext db, IValidationService validator) : ICommService
+public class CommService(CommunicationDbContext context) : ICommService
 {
-    public async Task CreateAsync(CommunicationCreateDto dto)
-    {
-        // Ensure "Pending" exists for this type
-        await validator.ValidateStatusForTypeAsync(dto.TypeCode, "Pending");
+    private readonly CommunicationDbContext _context = context;
 
-        var now = DateTime.UtcNow;
-        var comm = new Communication
+    public async Task<PaginatedResult<CommDto>> GetCommunicationsAsync(int pageNumber, int pageSize)
+    {
+        var query = _context.Communications
+            .AsNoTracking()
+            .OrderByDescending(c => c.LastUpdatedUtc);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var dtos = items.Select(c => new CommDto(
+            c.Id,
+            c.Title,
+            c.TypeCode,
+            c.CurrentStatusCode,
+            c.LastUpdatedUtc
+        )).ToList();
+
+        return new PaginatedResult<CommDto>(dtos, totalCount, pageNumber, pageSize);
+    }
+
+    public async Task<CommDetailsDto?> GetCommunicationByIdAsync(Guid id)
+    {
+        var comm = await _context.Communications
+            .AsNoTracking()
+            .Include(c => c.StatusHistory)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (comm == null) return null;
+
+        var statusHistoryDtos = comm.StatusHistory
+            .OrderBy(h => h.OccurredUtc)
+            .Select(h => new StatusHistoryDto(h.StatusCode, h.OccurredUtc))
+            .ToList();
+
+        return new CommDetailsDto(
+            comm.Id,
+            comm.Title,
+            comm.TypeCode,
+            comm.CurrentStatusCode,
+            comm.LastUpdatedUtc,
+            statusHistoryDtos
+        );
+    }
+
+    public async Task<Guid> CreateCommunicationAsync(CreateCommPayload payload)
+    {
+        // Validate Type exists and is active
+        var typeExists = await _context.Types
+            .AnyAsync(t => t.TypeCode == payload.TypeCode && t.IsActive);
+
+        if (!typeExists)
+            throw new ArgumentException($"Communication Type '{payload.TypeCode}' does not exist or is inactive.");
+
+        // Validate Status is allowed and active for this type
+        var statusValid = await _context.Statuses
+            .AnyAsync(s => s.TypeCode == payload.TypeCode
+                        && s.StatusCode == payload.CurrentStatusCode
+                        && s.IsActive);
+
+        if (!statusValid)
+            throw new ArgumentException($"Status '{payload.CurrentStatusCode}' is not valid for Type '{payload.TypeCode}'.");
+
+        var entity = new Communication
         {
-            Id             = Guid.NewGuid(),
-            Title          = dto.Title,
-            TypeCode       = dto.TypeCode,
-            CurrentStatus  = "Pending",
-            LastUpdatedUtc = now,
-            StatusHistory  = new List<CommunicationStatusHistory>
-            {
-                new() { StatusCode = "Pending", OccurredUtc = now }
-            }
+            Id = Guid.NewGuid(),
+            Title = payload.Title,
+            TypeCode = payload.TypeCode,
+            CurrentStatusCode = payload.CurrentStatusCode,
+            LastUpdatedUtc = DateTime.UtcNow
         };
 
-        db.Communications.Add(comm);
-        await db.SaveChangesAsync();
-    }
+        _context.Communications.Add(entity);
 
-    public async Task<(IEnumerable<Dto> Items, int TotalCount)> GetPaginatedAsync(int page, int pageSize)
-    {
-        var q     = db.Communications.Where(c => c.IsActive).OrderByDescending(c => c.LastUpdatedUtc);
-        var total = await q.CountAsync();
-        var items = await q.Skip((page - 1) * pageSize)
-                           .Take(pageSize)
-                           .Select(c => new Dto(c.Id, c.Title, c.TypeCode, c.CurrentStatus, c.LastUpdatedUtc))
-                           .ToListAsync();
-        return (items, total);
-    }
-
-    public async Task<IEnumerable<Dto>> GetAllAsync()
-        => await db.Communications
-                 .Where(c => c.IsActive)
-                 .OrderByDescending(c => c.LastUpdatedUtc)
-                 .Select(c => new Dto(c.Id, c.Title, c.TypeCode, c.CurrentStatus, c.LastUpdatedUtc))
-                 .ToListAsync();
-
-    public async Task<DetailsDto> GetByIdAsync(Guid id)
-    {
-        var c = await db.Communications
-                        .Include(c => c.StatusHistory)
-                        .FirstOrDefaultAsync(c => c.Id == id && c.IsActive)
-              ?? throw new KeyNotFoundException($"Communication {id} not found.");
-
-        var history = c.StatusHistory
-                       .OrderBy(h => h.OccurredUtc)
-                       .Select(h => new StatusHistoryDto(h.StatusCode, h.OccurredUtc))
-                       .ToList();
-
-        return new DetailsDto(c.Id, c.Title, c.TypeCode, c.CurrentStatus, c.LastUpdatedUtc, history);
-    }
-
-    public async Task UpdateAsync(CommunicationUpdateDto dto)
-    {
-        var comm = await db.Communications
-                           .Include(c => c.StatusHistory)
-                           .FirstOrDefaultAsync(c => c.Id == dto.Id && c.IsActive)
-                   ?? throw new KeyNotFoundException($"Communication {dto.Id} not found.");
-
-        // Validate new status for this communication’s type
-        await validator.ValidateStatusForTypeAsync(comm.TypeCode, dto.NewStatus);
-
-        var now = DateTime.UtcNow;
-        comm.CurrentStatus   = dto.NewStatus;
-        comm.LastUpdatedUtc  = now;
-        comm.StatusHistory.Add(new CommunicationStatusHistory
+        var history = new StatusHistory
         {
-            StatusCode  = dto.NewStatus,
-            OccurredUtc = now
-        });
+            Id = Guid.NewGuid(),
+            CommunicationId = entity.Id,
+            StatusCode = entity.CurrentStatusCode,
+            OccurredUtc = entity.LastUpdatedUtc
+        };
 
-        await db.SaveChangesAsync();
-    }
+        _context.StatusHistories.Add(history);
 
-    public async Task DeleteAsync(CommunicationDeleteDto dto)
-    {
-        var comm = await db.Communications.FindAsync(dto.Id)
-                   ?? throw new KeyNotFoundException($"Communication {dto.Id} not found.");
-        comm.IsActive = false;
-        await db.SaveChangesAsync();
+        await _context.SaveChangesAsync();
+
+        return entity.Id;
     }
 }

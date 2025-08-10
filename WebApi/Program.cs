@@ -26,11 +26,9 @@ if (builder.Environment.IsDevelopment())
 
 // DI
 builder.Services
-    .AddScoped<ITokenTestService, TokenTestService>()
     .AddScoped<ICommService, CommService>()
     .AddScoped<ITypeService, TypeService>()
-    .AddScoped<IStatusService, StatusService>()
-    .AddScoped<IValidationService, ValidationService>();
+    .AddScoped<IGlobalStatusService, GlobalStatusService>();
 
 builder.Services.AddControllers();
 
