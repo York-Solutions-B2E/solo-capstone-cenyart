@@ -35,6 +35,7 @@ dotnet add package Aspire.Hosting.SqlServer
 dotnet ef migrations add InitialCreate --project WebApi
 
 // BlazorServer
+dotnet add package Okta.AspNetCore --project BlazorServer
 dotnet add package RabbitMQ.Client --project BlazorServer
 
 // RabitMQ

@@ -1,8 +1,32 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="d-flex">
-  <NavMenu />
-  <div class="flex-grow-1 p-3">
-    @Body
-  </div>
+<div class="d-flex flex-column min-vh-100">
+    <!-- Top nav -->
+    <header class="navbar navbar-expand navbar-dark bg-dark">
+        <div class="container-fluid">
+
+            <div class="ms-auto">
+                <AuthorizeView>
+                    <Authorized>
+                        <a class="nav-link d-inline-block text-white me-3" href="profile">
+                            @context.User.Identity?.Name
+                        </a>
+                        <a class="nav-link d-inline-block text-white" href="Account/SignOut">Sign out</a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a class="nav-link d-inline-block text-white" href="Account/SignIn">Sign in</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main body -->
+    <div class="d-flex flex-grow-1">
+        <NavMenu />
+
+        <main class="flex-grow-1 p-3">
+            @Body
+        </main>
+    </div>
 </div>

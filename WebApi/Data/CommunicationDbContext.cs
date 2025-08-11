@@ -32,7 +32,6 @@ public class CommunicationDbContext(DbContextOptions<CommunicationDbContext> opt
             e.Property(g => g.Notes).HasMaxLength(100).IsRequired();
 
             e.HasIndex(g => g.Phase);
-            // StatusLinks FK configured on Status entity below (DeleteBehavior.Restrict)
         });
 
         // -------------------

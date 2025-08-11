@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using BlazorServer.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,30 +9,64 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// Aspire defaults (loads WebApiEndpoint, RabbitMQ, etc.)
+// Aspire defaults
 builder.AddServiceDefaults();
 
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddHttpContextAccessor();
 
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+})
+.AddCookie()
+.AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, options =>
+{
+    options.Authority = $"{builder.Configuration["Okta:OktaDomain"]}/oauth2/default";
+    options.ClientId = builder.Configuration["Okta:ClientId"];
+    options.ClientSecret = builder.Configuration["Okta:ClientSecret"];
+    options.ResponseType = "code";
+    options.SaveTokens = true;
+
+    options.Scope.Clear();
+    options.Scope.Add("openid");
+    options.Scope.Add("profile");
+    options.Scope.Add("email");
+    options.Scope.Add("offline_access");
+    options.Scope.Add("api://default");
+
+    options.GetClaimsFromUserInfoEndpoint = true;
+    options.TokenValidationParameters.NameClaimType = "name";
+});
+
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("Admin", policy =>
+    {
+        policy.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme);
+        policy.RequireAuthenticatedUser();
+    });
+
+// Attach access token to API requests
+builder.Services.AddTransient<AccessTokenHandler>();
 
 var apiBase = builder.Configuration["WebApiEndpointHttps"];
 if (string.IsNullOrWhiteSpace(apiBase))
 {
     throw new InvalidOperationException("Missing WebApiEndpointHttps");
 }
-builder.Services.AddHttpClient<CommService>(client =>
-{
-    client.BaseAddress = new Uri(apiBase);
-});
-builder.Services.AddHttpClient<TypeService>(client =>
-{
-    client.BaseAddress = new Uri(apiBase);
-});
-builder.Services.AddHttpClient<GlobalStatusService>(client =>
-{
-    client.BaseAddress = new Uri(apiBase);
-});
+
+builder.Services.AddHttpClient<CommService>(client => client.BaseAddress = new Uri(apiBase))
+    .AddHttpMessageHandler<AccessTokenHandler>();
+
+builder.Services.AddHttpClient<TypeService>(client => client.BaseAddress = new Uri(apiBase))
+    .AddHttpMessageHandler<AccessTokenHandler>();
+
+builder.Services.AddHttpClient<GlobalStatusService>(client => client.BaseAddress = new Uri(apiBase))
+    .AddHttpMessageHandler<AccessTokenHandler>();
+
+builder.Services.AddControllers();
 
 var app = builder.Build();
 

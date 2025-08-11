@@ -8,13 +8,14 @@ using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Database
 builder.Services.AddDbContext<CommunicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
 
-// Add service defaults & Aspire client integrations.
+// Aspire defaults
 builder.AddServiceDefaults();
 
-// Add services to the container.
+// Problem details + health checks
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
 
@@ -24,7 +25,7 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// DI
+// Dependency Injection
 builder.Services
     .AddScoped<ICommService, CommService>()
     .AddScoped<ITypeService, TypeService>()
@@ -37,7 +38,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    // Basic doc
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Communication API", Version = "v1" });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -65,25 +65,27 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// JWT Authentication (Okta)
-var authority = builder.Configuration["Okta:OktaDomain"] + "/oauth2/default";
-
+var authority = $"{builder.Configuration["Okta:OktaDomain"]}/oauth2/default";
+var audience = builder.Configuration["Okta:Audience"] ?? "api://default";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = authority;
-        options.Audience = "api://default";
+        options.Audience = audience;
         options.RequireHttpsMetadata = true;
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
+            ValidIssuer = authority,
             ValidateAudience = true,
+            ValidAudience = audience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2)
         };
     });
 
+// Authorization
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Admin", policy =>
     {
