@@ -85,7 +85,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("ApiScope", policy =>
+    .AddPolicy("Admin", policy =>
     {
         policy.RequireAuthenticatedUser();
         policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);

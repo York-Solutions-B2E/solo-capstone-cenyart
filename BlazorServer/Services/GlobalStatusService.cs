@@ -8,7 +8,7 @@ public class GlobalStatusService(HttpClient httpClient)
 
     public async Task<List<GlobalStatusDto>> GetAllGlobalStatusesAsync()
     {
-        var result = await _httpClient.GetFromJsonAsync<List<GlobalStatusDto>>("api/globalstatus");
+        var result = await _httpClient.GetFromJsonAsync<List<GlobalStatusDto>>("api/globalstatuses");
         return result ?? new List<GlobalStatusDto>();
     }
 }

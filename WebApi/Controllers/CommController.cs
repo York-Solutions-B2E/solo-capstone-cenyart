@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Dtos;
 using Shared.Interfaces;
@@ -5,13 +6,13 @@ using Shared.Interfaces;
 namespace WebApi.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/[controller]s")]
     public class CommController(ICommService commService) : ControllerBase
     {
         private readonly ICommService _commService = commService;
 
-        // GET: api/comm?pageNumber=1&pageSize=10
-        [HttpGet]
+        [AllowAnonymous]
+        [HttpGet] // GET: api/comms?pageNumber=1&pageSize=10
         public async Task<IActionResult> GetCommunications([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             if (pageNumber <= 0 || pageSize <= 0)
@@ -21,8 +22,8 @@ namespace WebApi.Controllers
             return Ok(result);
         }
 
-        // GET: api/comm/{id}
-        [HttpGet("{id:guid}")]
+        [AllowAnonymous]
+        [HttpGet("{id:guid}")] // GET: api/comms/{id}
         public async Task<IActionResult> GetCommunicationById(Guid id)
         {
             var comm = await _commService.GetCommunicationByIdAsync(id);
@@ -32,8 +33,8 @@ namespace WebApi.Controllers
             return Ok(comm);
         }
 
-        // POST: api/comm
-        [HttpPost]
+        [AllowAnonymous]
+        [HttpPost] // POST: api/comms
         public async Task<IActionResult> CreateCommunication([FromBody] CreateCommPayload payload)
         {
             if (payload == null)
