@@ -30,6 +30,7 @@ builder.Services
     .AddScoped<ITypeService, TypeService>()
     .AddScoped<IGlobalStatusService, GlobalStatusService>();
 
+builder.Services.AddHostedService<RabbitMqSubscriberService>();
 builder.Services.AddControllers();
 
 // Swagger + JWT Auth

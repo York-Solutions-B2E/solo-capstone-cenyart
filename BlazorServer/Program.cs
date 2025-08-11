@@ -7,12 +7,11 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// 1️⃣ Aspire defaults (loads WebApiEndpoint, RabbitMQ, etc.)
+// Aspire defaults (loads WebApiEndpoint, RabbitMQ, etc.)
 builder.AddServiceDefaults();
 
-// 2️⃣ Register Razor Pages & Blazor Server
 builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();   // required for blazor.server.js
+builder.Services.AddServerSideBlazor();
 
 
 var apiBase = builder.Configuration["WebApiEndpointHttps"];

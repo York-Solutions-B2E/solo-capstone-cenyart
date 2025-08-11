@@ -9,6 +9,12 @@ public sealed record CreateCommPayload(
     string CurrentStatusCode
 );
 
+public sealed record CommEventPayload(
+    Guid CommunicationId,
+    string StatusCode,
+    DateTime OccurredUtc
+);
+
 // ----------------------
 // Type payloads
 // ----------------------

@@ -1,0 +1,179 @@
+@page "/event-simulator"
+@inject CommService CommService
+@inject TypeService TypeService
+
+@using System.Text
+@using System.Text.Json
+@using RabbitMQ.Client
+
+<h3>Event Simulator</h3>
+
+<div class="mb-3">
+    <label class="form-label">Select Communication</label>
+    <select class="form-select"
+            @bind="_selectedCommId"
+            @bind:after="OnCommChanged">
+        <option value="">-- Select Communication --</option>
+        @foreach (var comm in _communications)
+        {
+            <option value="@comm.Id.ToString()">@comm.Title</option>
+        }
+    </select>
+
+    <div class="mt-2">
+        <button class="btn btn-secondary me-2" @onclick="PrevPage" disabled="@(_currentPage <= 1)">Prev</button>
+        <button class="btn btn-secondary" @onclick="NextPage" disabled="@(!_hasMore)">Next</button>
+        <span class="ms-2">Page @_currentPage of @_totalPages</span>
+    </div>
+</div>
+
+@if (_selectedCommDetails != null)
+{
+    <h5>Status History</h5>
+    <ul class="list-group mb-3">
+        @foreach (var history in _selectedCommDetails.StatusHistory.OrderBy(h => h.OccurredUtc))
+        {
+            <li class="list-group-item d-flex justify-content-between">
+                <span>@history.StatusCode</span>
+                <span class="text-muted">@history.OccurredUtc.ToLocalTime()</span>
+            </li>
+        }
+    </ul>
+}
+
+<div class="mb-3">
+    <label class="form-label">Select Status</label>
+    <select class="form-select"
+            @bind="_selectedStatusCode"
+            disabled="@(!_availableStatuses.Any())">
+        <option value="">-- Select Status --</option>
+        @foreach (var status in _availableStatuses)
+        {
+            <option value="@status.StatusCode">@status.Description</option>
+        }
+    </select>
+</div>
+
+<button class="btn btn-primary"
+        @onclick="PublishEvent"
+        disabled="@(!CanPublish)">
+    Publish
+</button>
+
+@if (_publishLog.Any())
+{
+    <h5 class="mt-4">Publish Log</h5>
+    <ul class="list-group">
+        @foreach (var msg in _publishLog)
+        {
+            <li class="list-group-item">@msg</li>
+        }
+    </ul>
+}
+
+@code {
+    private List<CommDto> _communications = new();
+    private List<StatusDto> _availableStatuses = new();
+    private string? _selectedCommId;
+    private string? _selectedStatusCode;
+
+    private CommDetailsDto? _selectedCommDetails;
+
+    private int _currentPage = 1;
+    private const int _pageSize = 10;
+    private bool _hasMore = false;
+    private int _totalCount = 0;
+    private int _totalPages = 0;
+
+    private List<string> _publishLog = new();
+
+    private bool CanPublish =>
+        !string.IsNullOrEmpty(_selectedCommId) &&
+        !string.IsNullOrEmpty(_selectedStatusCode);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCommunicationsAsync();
+    }
+
+    private async Task LoadCommunicationsAsync()
+    {
+        var result = await CommService.GetCommunicationsAsync(_currentPage, _pageSize);
+        _communications = result.Items;
+        _totalCount = result.TotalCount;
+        _totalPages = (_totalCount + _pageSize - 1) / _pageSize;
+        _hasMore = _currentPage < _totalPages;
+    }
+
+    private async Task OnCommChanged()
+    {
+        _availableStatuses.Clear();
+        _selectedStatusCode = null;
+        _selectedCommDetails = null;
+
+        if (!string.IsNullOrEmpty(_selectedCommId))
+        {
+            var comm = _communications.FirstOrDefault(c => c.Id.ToString() == _selectedCommId);
+            if (comm != null)
+            {
+                // Load full details for status history
+                _selectedCommDetails = await CommService.GetCommunicationByIdAsync(comm.Id);
+
+                var typeDetails = await TypeService.GetTypeByCodeAsync(comm.TypeCode);
+                _availableStatuses = typeDetails?.ValidStatuses ?? new List<StatusDto>();
+            }
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (_currentPage > 1)
+        {
+            _currentPage--;
+            ResetSelection();
+            await LoadCommunicationsAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_hasMore)
+        {
+            _currentPage++;
+            ResetSelection();
+            await LoadCommunicationsAsync();
+        }
+    }
+
+    private void ResetSelection()
+    {
+        _selectedCommId = null;
+        _selectedStatusCode = null;
+        _selectedCommDetails = null;
+        _availableStatuses.Clear();
+    }
+
+    private async Task PublishEvent()
+    {
+        var comm = _communications.FirstOrDefault(c => c.Id.ToString() == _selectedCommId);
+        if (comm is null) return;
+
+        var payload = new CommEventPayload(comm.Id, _selectedStatusCode!, DateTime.UtcNow);
+        var factory = new ConnectionFactory { HostName = "localhost", UserName = "guest", Password = "guest"};
+
+        await using var connection = await factory.CreateConnectionAsync();
+        await using var channel = await connection.CreateChannelAsync();
+
+        await channel.ExchangeDeclareAsync(exchange: "events", type: ExchangeType.Fanout);
+        var bodyBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload));
+
+        await channel.BasicPublishAsync(
+            exchange: "events",
+            routingKey: string.Empty,
+            body: bodyBytes
+        );
+
+        _publishLog.Insert(0, $"Published '{comm.Title}' → '{payload.StatusCode}' at {payload.OccurredUtc:HH:mm:ss} UTC");
+        StateHasChanged();
+    }
+}

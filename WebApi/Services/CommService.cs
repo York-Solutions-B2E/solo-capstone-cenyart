@@ -100,4 +100,33 @@ public class CommService(CommunicationDbContext context) : ICommService
 
         return entity.Id;
     }
+
+    public async Task<bool> AddStatusToHistoryAsync(CommEventPayload evt)
+    {
+        var comm = await _context.Communications
+            .Include(c => c.StatusHistory)
+            .FirstOrDefaultAsync(c => c.Id == evt.CommunicationId);
+
+        if (comm == null) return false;
+
+        comm.StatusHistory.Add(new StatusHistory
+        {
+            CommunicationId = evt.CommunicationId,
+            StatusCode = evt.StatusCode,
+            OccurredUtc = evt.OccurredUtc
+        });
+
+        comm.CurrentStatusCode = evt.StatusCode;
+        comm.LastUpdatedUtc = evt.OccurredUtc;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

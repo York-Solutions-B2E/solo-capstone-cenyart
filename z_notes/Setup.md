@@ -28,13 +28,14 @@ dotnet add package Okta.AspNetCore \
 && dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0\
 && dotnet add package Microsoft.EntityFrameworkCore.SqlServer \
 && dotnet add package Microsoft.EntityFrameworkCore.Design
+dotnet add package RabbitMQ.Client --project WebApi
 
 // AppHost
 dotnet add package Aspire.Hosting.SqlServer
 dotnet ef migrations add InitialCreate --project WebApi
 
 // BlazorServer
-dotnet add package MudBlazor --project BlazorServer
+dotnet add package RabbitMQ.Client --project BlazorServer
 
 // RabitMQ
 dotnet add package Aspire.Hosting.RabbitMQ --project AppHost
@@ -66,6 +67,12 @@ docker volume rm sqlserver
 docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=YourStrongPassword123!' \
   -p 1433:1433 --name sqldata \
   -d mcr.microsoft.com/mssql/server:2022-latest
+
+docker run -d \
+  --name rabbitmq \
+  -p 5672:5672 \
+  -p 15672:15672 \
+  rabbitmq:3-management
 
 dotnet run --project AppHost
 dotnet run --project WebApi

@@ -49,7 +49,6 @@ public class TypeController(ITypeService typeService) : ControllerBase
         return NoContent();
     }
 
-
     // DELETE api/types/{typeCode}
     [HttpDelete("{typeCode}")]
     public async Task<IActionResult> SoftDelete(string typeCode)

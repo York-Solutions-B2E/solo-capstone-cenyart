@@ -9,6 +9,8 @@ public interface ICommService
     Task<CommDetailsDto?> GetCommunicationByIdAsync(Guid id);
 
     Task<Guid> CreateCommunicationAsync(CreateCommPayload payload);
+
+    Task<bool> AddStatusToHistoryAsync(CommEventPayload evt);
 }
 
 public interface ITypeService

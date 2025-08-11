@@ -1,0 +1,86 @@
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System.Text;
+using System.Text.Json;
+using Shared.Interfaces;
+using Shared.Dtos;
+
+namespace WebApi.Services;
+
+public sealed class RabbitMqSubscriberService(IServiceProvider serviceProvider, ILogger<RabbitMqSubscriberService> logger) : BackgroundService
+{
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly ILogger<RabbitMqSubscriberService> _logger = logger;
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var factory = new ConnectionFactory { HostName = "localhost", UserName = "guest", Password = "guest" };
+
+        // forward stoppingToken here so connection creation can be cancelled on shutdown
+        await using var connection = await factory.CreateConnectionAsync(stoppingToken);
+
+        // Create channel using the parameterless CreateChannelAsync()
+        await using var channel = await connection.CreateChannelAsync();
+
+        // declare exchange
+        await channel.ExchangeDeclareAsync("events", ExchangeType.Fanout, cancellationToken: stoppingToken);
+
+        // server-named queue
+        var queueDeclare = await channel.QueueDeclareAsync(cancellationToken: stoppingToken);
+        var queueName = queueDeclare.QueueName;
+
+        // bind queue to exchange
+        await channel.QueueBindAsync(queueName, "events", string.Empty, cancellationToken: stoppingToken);
+
+        var consumer = new AsyncEventingBasicConsumer(channel);
+
+        consumer.ReceivedAsync += async (sender, ea) =>
+        {
+            var body = ea.Body.ToArray();
+            var json = Encoding.UTF8.GetString(body);
+
+            try
+            {
+                var evt = JsonSerializer.Deserialize<CommEventPayload>(json);
+                if (evt == null)
+                {
+                    _logger.LogWarning("Received invalid JSON payload from exchange 'events'.");
+                    // reject and drop bad messages
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var commService = scope.ServiceProvider.GetRequiredService<ICommService>();
+
+                var success = await commService.AddStatusToHistoryAsync(evt);
+
+                if (success)
+                {
+                    await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
+                    _logger.LogInformation("Processed event for CommunicationId {CommunicationId}", evt.CommunicationId);
+                }
+                else
+                {
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true);
+                    _logger.LogWarning("Failed to update DB for CommunicationId {CommunicationId}", evt.CommunicationId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing RabbitMQ message");
+                await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true);
+            }
+        };
+
+        // start consuming, manual ack
+        await channel.BasicConsumeAsync(queue: queueName, autoAck: false, consumer: consumer, cancellationToken: stoppingToken);
+
+        // wait until cancelled
+        try
+        {
+            await Task.Delay(Timeout.Infinite, stoppingToken);
+        }
+        catch (TaskCanceledException) { /* graceful shutdown */ }
+    }
+}
