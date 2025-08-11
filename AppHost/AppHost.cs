@@ -1,5 +1,7 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+builder.AddDockerComposeEnvironment("docker-compose");
+
 // Disable randomized ports so Aspire assigns static ports
 builder.Configuration["DcpPublisher:RandomizePorts"] = "false";
 
@@ -9,7 +11,7 @@ var sql = builder.AddSqlServer("sql")
     .AddDatabase("sqldata");
 
 // RabbitMQ
-var rabbitmq = builder.AddRabbitMQ("messaging")
+var rabbitmq = builder.AddRabbitMQ("rabbit")
     .WithDataVolume();
 
 // Web API project

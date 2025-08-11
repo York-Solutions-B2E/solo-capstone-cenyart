@@ -84,3 +84,10 @@ dotnet build
 ```
 
 [Cmd+Shift+P] [Developer: Reload Window]
+
+// AppHost
+dotnet tool install --global aspire.cli --prerelease
+dotnet add package Aspire.Hosting.Docker --prerelease
+
+aspire publish -o docker-compose-artifacts
+docker compose up -d --build
