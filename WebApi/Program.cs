@@ -6,6 +6,7 @@ using RabbitMQ.Client;
 using Shared.Interfaces;
 using WebApi.Data;
 using WebApi.Services;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -74,25 +75,62 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-var authority = $"{builder.Configuration["Okta:OktaDomain"]}/oauth2/default";
-var audience = builder.Configuration["Okta:Audience"] ?? "api://default";
+// var authority = $"{builder.Configuration["Okta:OktaDomain"]}/oauth2/default";
+// var authority = "https://integrator-7281285.okta.com/oauth2/default";
+// var audience = "api://default";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = authority;
-        options.Audience = audience;
+        options.Authority = "https://integrator-7281285.okta.com/oauth2/default";
+        options.Audience = "api://default";
         options.RequireHttpsMetadata = true;
 
+        // Disable everything just for debugging
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidIssuer = authority,
-            ValidateAudience = true,
-            ValidAudience = audience,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(2)
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = false,
+            SignatureValidator = (token, parameters) => new JwtSecurityToken(token)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                Console.WriteLine($"[OnMessageReceived] Raw token: {ctx.Token}");
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = ctx =>
+            {
+                Console.WriteLine("[OnAuthenticationFailed] Exception:");
+                Console.WriteLine(ctx.Exception?.ToString() ?? "No exception");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = ctx =>
+            {
+                Console.WriteLine("[OnTokenValidated] SUCCESS for user: " +
+                                  (ctx.Principal?.Identity?.Name ?? "(no name)"));
+                return Task.CompletedTask;
+            },
+            OnChallenge = ctx =>
+            {
+                Console.WriteLine("[OnChallenge] Triggered");
+                Console.WriteLine($"  Error: {ctx.Error ?? "(null)"}");
+                Console.WriteLine($"  Description: {ctx.ErrorDescription ?? "(null)"}");
+                Console.WriteLine($"  Uri: {ctx.ErrorUri ?? "(null)"}");
+                Console.WriteLine($"  Headers sent? {ctx.Response.HasStarted}");
+                return Task.CompletedTask;
+            },
+            OnForbidden = ctx =>
+            {
+                Console.WriteLine("[OnForbidden] Triggered");
+                return Task.CompletedTask;
+            }
         };
     });
+
+
 
 // Authorization
 builder.Services.AddAuthorizationBuilder()

@@ -32,22 +32,20 @@ public class AccountController : Controller
 }
 
 // AccessTokenHandler: attaches access token from HttpContext to outgoing HttpClient requests
-public class AccessTokenHandler(IHttpContextAccessor ctx) : DelegatingHandler
+public class AccessTokenHandler(IHttpContextAccessor httpContextAccessor) : DelegatingHandler
 {
-    private readonly IHttpContextAccessor _ctx = ctx;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var httpContext = _ctx.HttpContext;
-        if (httpContext != null)
-        {
-            var accessToken = await httpContext.GetTokenAsync("access_token");
-            if (!string.IsNullOrWhiteSpace(accessToken))
-            {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-            }
-        }
+        var token = _httpContextAccessor.HttpContext?.GetTokenAsync("access_token").Result;
+        Console.WriteLine($"[AccessTokenHandler] Attaching token? Length: {token?.Length.ToString() ?? "null"}");
+        
+        if (!string.IsNullOrEmpty(token))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         return await base.SendAsync(request, cancellationToken);
     }
 }
+
+
