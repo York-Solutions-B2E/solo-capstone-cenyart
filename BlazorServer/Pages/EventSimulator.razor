@@ -1,6 +1,7 @@
 @page "/event-simulator"
 @inject CommService CommService
 @inject TypeService TypeService
+@inject RabbitMQ.Client.IConnectionFactory ConnectionFactory
 
 @using System.Text
 @using System.Text.Json
@@ -159,9 +160,9 @@
         if (comm is null) return;
 
         var payload = new CommEventPayload(comm.Id, _selectedStatusCode!, DateTime.UtcNow);
-        var factory = new ConnectionFactory { HostName = "localhost", UserName = "guest", Password = "guest"};
 
-        await using var connection = await factory.CreateConnectionAsync();
+        // Use injected connection factory
+        await using var connection = await ConnectionFactory.CreateConnectionAsync();
         await using var channel = await connection.CreateChannelAsync();
 
         await channel.ExchangeDeclareAsync(exchange: "events", type: ExchangeType.Fanout);

@@ -2,17 +2,26 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RabbitMQ.Client;
 using Shared.Interfaces;
 using WebApi.Data;
 using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
+// Aspire connections
+var sqlConnectionString = builder.Configuration.GetConnectionString("sqldata") 
+    ?? throw new InvalidOperationException("Missing SQL Server connection string");
 builder.Services.AddDbContext<CommunicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
+    options.UseSqlServer(sqlConnectionString));
 
-// Aspire defaults
+builder.Services.AddSingleton<IConnectionFactory>(sp =>
+{
+    var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit") 
+        ?? throw new InvalidOperationException("Missing RabbitMQ connection string");
+    return new ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
+});
+
 builder.AddServiceDefaults();
 
 // Problem details + health checks
@@ -31,7 +40,7 @@ builder.Services
     .AddScoped<ITypeService, TypeService>()
     .AddScoped<IGlobalStatusService, GlobalStatusService>();
 
-builder.Services.AddHostedService<RabbitMqSubscriberService>();
+builder.Services.AddHostedService<RabbitMqSubService>();
 builder.Services.AddControllers();
 
 // Swagger + JWT Auth

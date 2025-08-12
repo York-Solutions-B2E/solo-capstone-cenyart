@@ -1,21 +1,24 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using BlazorServer.Services;
+using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load user secrets in Development only
 if (builder.Environment.IsDevelopment())
 {
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// Aspire defaults
+// Aspire defaults to inject env variables, connection strings, etc.
 builder.AddServiceDefaults();
 
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
 
+// Authentication (Okta)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -48,14 +51,9 @@ builder.Services.AddAuthorizationBuilder()
         policy.RequireAuthenticatedUser();
     });
 
-// Attach access token to API requests
-builder.Services.AddTransient<AccessTokenHandler>();
-
-var apiBase = builder.Configuration["WebApiEndpointHttps"];
-if (string.IsNullOrWhiteSpace(apiBase))
-{
-    throw new InvalidOperationException("Missing WebApiEndpointHttps");
-}
+// HttpClients for WebApi services, use Aspire-injected URL only (no fallback)
+var apiBase = builder.Configuration["services:webapi:http:0"]
+    ?? throw new InvalidOperationException("Missing Aspire injected WebAPI HTTP endpoint URL.");
 
 builder.Services.AddHttpClient<CommService>(client => client.BaseAddress = new Uri(apiBase))
     .AddHttpMessageHandler<AccessTokenHandler>();
@@ -65,6 +63,17 @@ builder.Services.AddHttpClient<TypeService>(client => client.BaseAddress = new U
 
 builder.Services.AddHttpClient<GlobalStatusService>(client => client.BaseAddress = new Uri(apiBase))
     .AddHttpMessageHandler<AccessTokenHandler>();
+
+builder.Services.AddTransient<AccessTokenHandler>();
+
+// Register RabbitMQ connection factory from Aspire "rabbit" connection string only
+builder.Services.AddSingleton<IConnectionFactory>(sp =>
+{
+    var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit")
+        ?? throw new InvalidOperationException("Missing RabbitMQ connection string");
+
+    return new ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
+});
 
 builder.Services.AddControllers();
 

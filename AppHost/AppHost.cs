@@ -17,19 +17,25 @@ var rabbitmq = builder.AddRabbitMQ("rabbit")
 // Web API project
 var webApi = builder.AddProject<Projects.WebApi>("webapi")
     .WithHttpEndpoint(name: "webapi-https", port: 7157)
+    .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
     .WithReference(sql)
     .WithReference(rabbitmq)
     .WaitFor(sql)
-    .WaitFor(rabbitmq);
+    .WaitFor(rabbitmq)
+    .WithEnvironment("OKTA_DOMAIN", builder.Configuration["Okta:Domain"]);
 
 // Blazor Server project
 builder.AddProject<Projects.BlazorServer>("blazorserver")
     .WithHttpEndpoint(name: "blazorserver-https", port: 5001)
+    .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
     .WithReference(webApi)
     .WithReference(rabbitmq)
     .WaitFor(webApi)
-    .WaitFor(rabbitmq);
+    .WaitFor(rabbitmq)
+    .WithEnvironment("OKTA_DOMAIN", builder.Configuration["Okta:Domain"])
+    .WithEnvironment("OKTA_CLIENT_ID", builder.Configuration["Okta:ClientId"])
+    .WithEnvironment("OKTA_CLIENT_SECRET", builder.Configuration["Okta:ClientSecret"]);
 
 builder.Build().Run();

@@ -8,7 +8,6 @@ dotnet user-secrets set "Okta:OktaDomain" ""
 dotnet user-secrets set "Okta:ClientId" ""
 dotnet user-secrets set "Okta:ClientSecret" ""
 dotnet user-secrets set "Okta:AuthorizationServerId" "default"
-dotnet user-secrets set "ConnectionStrings:sqldata" "Server=localhost,1433;Database=sqldata;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=true"
 
 dotnet user-secrets list --project BlazorServer
 dotnet user-secrets list --project WebApi
@@ -90,4 +89,4 @@ dotnet tool install --global aspire.cli --prerelease
 dotnet add package Aspire.Hosting.Docker --prerelease
 
 aspire publish -o docker-compose-artifacts
-docker compose up -d --build
+docker compose up -d

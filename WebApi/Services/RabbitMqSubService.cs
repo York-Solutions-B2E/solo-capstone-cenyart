@@ -7,29 +7,25 @@ using Shared.Dtos;
 
 namespace WebApi.Services;
 
-public sealed class RabbitMqSubscriberService(IServiceProvider serviceProvider, ILogger<RabbitMqSubscriberService> logger) : BackgroundService
+public sealed class RabbitMqSubService(
+    IServiceProvider serviceProvider,
+    ILogger<RabbitMqSubService> logger,
+    IConnectionFactory connectionFactory) : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
-    private readonly ILogger<RabbitMqSubscriberService> _logger = logger;
+    private readonly ILogger<RabbitMqSubService> _logger = logger;
+    private readonly IConnectionFactory _connectionFactory = connectionFactory;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var factory = new ConnectionFactory { HostName = "localhost", UserName = "guest", Password = "guest" };
-
-        // forward stoppingToken here so connection creation can be cancelled on shutdown
-        await using var connection = await factory.CreateConnectionAsync(stoppingToken);
-
-        // Create channel using the parameterless CreateChannelAsync()
+        await using var connection = await _connectionFactory.CreateConnectionAsync(stoppingToken);
         await using var channel = await connection.CreateChannelAsync();
 
-        // declare exchange
         await channel.ExchangeDeclareAsync("events", ExchangeType.Fanout, cancellationToken: stoppingToken);
 
-        // server-named queue
         var queueDeclare = await channel.QueueDeclareAsync(cancellationToken: stoppingToken);
         var queueName = queueDeclare.QueueName;
 
-        // bind queue to exchange
         await channel.QueueBindAsync(queueName, "events", string.Empty, cancellationToken: stoppingToken);
 
         var consumer = new AsyncEventingBasicConsumer(channel);
@@ -45,7 +41,6 @@ public sealed class RabbitMqSubscriberService(IServiceProvider serviceProvider, 
                 if (evt == null)
                 {
                     _logger.LogWarning("Received invalid JSON payload from exchange 'events'.");
-                    // reject and drop bad messages
                     await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false);
                     return;
                 }
@@ -73,14 +68,12 @@ public sealed class RabbitMqSubscriberService(IServiceProvider serviceProvider, 
             }
         };
 
-        // start consuming, manual ack
         await channel.BasicConsumeAsync(queue: queueName, autoAck: false, consumer: consumer, cancellationToken: stoppingToken);
 
-        // wait until cancelled
         try
         {
             await Task.Delay(Timeout.Infinite, stoppingToken);
         }
-        catch (TaskCanceledException) { /* graceful shutdown */ }
+        catch (TaskCanceledException) { }
     }
 }
