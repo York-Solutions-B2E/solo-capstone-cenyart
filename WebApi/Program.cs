@@ -75,23 +75,23 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// var authority = $"{builder.Configuration["Okta:OktaDomain"]}/oauth2/default";
-// var authority = "https://integrator-7281285.okta.com/oauth2/default";
-// var audience = "api://default";
+var authority = $"{builder.Configuration["Okta:OktaDomain"]}/oauth2/default";
+var audience = "api://default";
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-        options.Authority = "https://integrator-7281285.okta.com/oauth2/default";
-        options.Audience = "api://default";
+        options.Authority = authority;
+        options.Audience = audience;
         options.RequireHttpsMetadata = true;
 
-        // Disable everything just for debugging
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ValidateLifetime = false,
-            SignatureValidator = (token, parameters) => new JwtSecurityToken(token)
+            ValidateIssuer = true,
+            ValidIssuer = authority,
+            ValidateAudience = true,
+            ValidAudience = audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2)
         };
 
         options.Events = new JwtBearerEvents

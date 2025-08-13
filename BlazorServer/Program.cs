@@ -52,8 +52,8 @@ builder.Services.AddAuthorizationBuilder()
     });
 
 // HttpClients for WebApi services, use Aspire-injected URL only (no fallback)
-var apiBase = builder.Configuration["services:webapi:http:0"]
-    ?? throw new InvalidOperationException("Missing Aspire injected WebAPI HTTP endpoint URL.");
+var apiBase = builder.Configuration["services:webapi:https:0"]
+    ?? throw new InvalidOperationException("Missing Aspire injected WebAPI HTTPS endpoint URL.");
 
 builder.Services.AddHttpClient<CommService>(client => client.BaseAddress = new Uri(apiBase))
     .AddHttpMessageHandler<AccessTokenHandler>();

@@ -22,7 +22,7 @@ dotnet sln add Shared
 ```
 
 ```zsh
-// Add Packages WebApi
+// WebApi
 dotnet add package Okta.AspNetCore \
 && dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0\
 && dotnet add package Microsoft.EntityFrameworkCore.SqlServer \
@@ -31,7 +31,6 @@ dotnet add package RabbitMQ.Client --project WebApi
 
 // AppHost
 dotnet add package Aspire.Hosting.SqlServer
-dotnet ef migrations add InitialCreate --project WebApi
 
 // BlazorServer
 dotnet add package Okta.AspNetCore --project BlazorServer
@@ -53,9 +52,6 @@ dotnet ef database update --project WebApi
 # Add subsequent migrations (example)
 dotnet ef migrations add AddCommunicationTypeStatuses
 dotnet ef database update
-
-# For production deployment
-dotnet ef database update --connection "YourProductionConnectionString"
 ```
 
 ```bash
@@ -90,3 +86,5 @@ dotnet add package Aspire.Hosting.Docker --prerelease
 
 aspire publish -o docker-compose-artifacts
 docker compose up -d
+
+dotnet user-secrets list --project AppHost

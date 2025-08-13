@@ -38,8 +38,8 @@ public class AccessTokenHandler(IHttpContextAccessor httpContextAccessor) : Dele
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var token = _httpContextAccessor.HttpContext?.GetTokenAsync("access_token").Result;
-        Console.WriteLine($"[AccessTokenHandler] Attaching token? Length: {token?.Length.ToString() ?? "null"}");
+        var token = await _httpContextAccessor.HttpContext!.GetTokenAsync("access_token");
+        Console.WriteLine($"[AccessTokenHandler] Attaching token: {(token is null ? "null" : $"length {token.Length}")}");
         
         if (!string.IsNullOrEmpty(token))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
