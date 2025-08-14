@@ -7,17 +7,17 @@ using Shared.Dtos;
 
 namespace WebApi.Services;
 
-public sealed class RabbitMqSubscriberService(IServiceProvider serviceProvider, ILogger<RabbitMqSubscriberService> logger) : BackgroundService
+public sealed class RabbitMqSubscriberService(IServiceProvider serviceProvider, ILogger<RabbitMqSubscriberService> logger, IConnectionFactory connectionFactory) : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly ILogger<RabbitMqSubscriberService> _logger = logger;
+    private readonly IConnectionFactory _connectionFactory = connectionFactory;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var factory = new ConnectionFactory { HostName = "localhost", UserName = "guest", Password = "guest" };
 
         // forward stoppingToken here so connection creation can be cancelled on shutdown
-        await using var connection = await factory.CreateConnectionAsync(stoppingToken);
+        await using var connection = await _connectionFactory.CreateConnectionAsync(stoppingToken);
 
         // Create channel using the parameterless CreateChannelAsync()
         await using var channel = await connection.CreateChannelAsync();

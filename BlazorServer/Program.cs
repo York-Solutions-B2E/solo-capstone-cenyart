@@ -1,17 +1,24 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using BlazorServer.Services;
+using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
-if (builder.Environment.IsDevelopment())
+if (builder.Environment.IsDevelopment()) { builder.Configuration.AddUserSecrets<Program>(); }
+else if (builder.Environment.IsProduction()) { builder.Configuration.AddUserSecrets<Program>(); }
+
+builder.Services.AddSingleton<IConnectionFactory>(sp =>
 {
-    builder.Configuration.AddUserSecrets<Program>();
-}
+    var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit") 
+        ?? throw new InvalidOperationException("Missing RabbitMQ connection string");
+    return new ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
+});
 
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddAuthentication(options =>
 {
@@ -26,6 +33,12 @@ builder.Services.AddAuthentication(options =>
     options.ClientSecret = builder.Configuration["Okta:ClientSecret"];
     options.ResponseType = "code";
     options.SaveTokens = true;
+
+    // For development to allow HTTP metadata
+    if (builder.Environment.IsDevelopment())
+    {
+        options.RequireHttpsMetadata = false;
+    }
 
     options.Scope.Clear();
     options.Scope.Add("openid");
@@ -80,6 +93,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 app.MapRazorPages();
 app.MapBlazorHub();

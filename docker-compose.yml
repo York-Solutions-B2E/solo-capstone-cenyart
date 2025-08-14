@@ -1,0 +1,127 @@
+networks:
+  backend:
+
+volumes:
+  sql_data:
+  rabbit_data:
+  rabbit_log:
+
+services:
+
+  sqldata:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqldata
+    ports:
+      - "1433:1433"
+    environment:
+      SA_PASSWORD: "${SQL_SA_PASSWORD}"
+      ACCEPT_EULA: "Y"
+    healthcheck:
+      test: >
+        /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${SQL_SA_PASSWORD}" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    volumes:
+      - sql_data:/var/opt/mssql
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD}"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - rabbit_data:/var/lib/rabbitmq
+      - rabbit_log:/var/log/rabbitmq
+    networks:
+      - backend
+
+  webapi:
+    build:
+      context: .
+      dockerfile: WebApi/Dockerfile
+    container_name: webapi
+    ports:
+      - "7157:7157"
+      - "7158:7158"
+    environment:
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      ASPNETCORE_URLS: "https://+:7157;http://+:7158"
+      ASPNETCORE_Kestrel__Certificates__Default__Password: "yourcertpassword"
+      ASPNETCORE_Kestrel__Certificates__Default__Path: "/https/aspnetapp.pfx"
+      ASPNETCORE_HTTPS_PORT: "7157"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__sqldata: "${CONNECTION_STRING_SQLDATA}"
+      ConnectionStrings__rabbit: "${CONNECTION_STRING_RABBIT}"
+      Okta__OktaDomain: "${OKTA_DOMAIN}"
+      Okta__Audience: "${OKTA_AUDIENCE}"
+    volumes:
+      - ~/.aspnet/https:/https:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7158/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      sqldata:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend
+
+  blazorserver:
+    build:
+      context: .
+      dockerfile: BlazorServer/Dockerfile
+    container_name: blazorserver
+    ports:
+      - "5001:5001"
+      - "5002:5002"
+    environment:
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      ASPNETCORE_URLS: "https://+:5001;http://+:5002"
+      ASPNETCORE_Kestrel__Certificates__Default__Password: "yourcertpassword"
+      ASPNETCORE_Kestrel__Certificates__Default__Path: "/https/aspnetapp.pfx"
+      ASPNETCORE_HTTPS_PORT: "5001"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__rabbit: "${CONNECTION_STRING_RABBIT}"
+      Okta__OktaDomain: "${OKTA_DOMAIN}"
+      Okta__ClientId: "${OKTA_CLIENT_ID}"
+      Okta__ClientSecret: "${OKTA_CLIENT_SECRET}"
+      WebApiEndpointHttps: "http://webapi:7158"
+    volumes:
+      - ~/.aspnet/https:/https:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      webapi:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend

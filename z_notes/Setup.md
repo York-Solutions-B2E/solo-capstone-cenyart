@@ -29,18 +29,9 @@ dotnet add package Okta.AspNetCore \
 && dotnet add package Microsoft.EntityFrameworkCore.Design
 dotnet add package RabbitMQ.Client --project WebApi
 
-// AppHost
-dotnet add package Aspire.Hosting.SqlServer
-dotnet ef migrations add InitialCreate --project WebApi
-
 // BlazorServer
 dotnet add package Okta.AspNetCore --project BlazorServer
 dotnet add package RabbitMQ.Client --project BlazorServer
-
-// RabitMQ
-dotnet add package Aspire.Hosting.RabbitMQ --project AppHost
-dotnet add package Aspire.RabbitMQ.Client --project WebApi
-dotnet add package Aspire.RabbitMQ.Client --project BlazorServer
 ```
 
 ```bash
@@ -49,33 +40,23 @@ dotnet ef migrations add InitialCreate --project WebApi
 
 # Update database
 dotnet ef database update --project WebApi
-
-# Add subsequent migrations (example)
-dotnet ef migrations add AddCommunicationTypeStatuses
-dotnet ef database update
-
-# For production deployment
-dotnet ef database update --connection "YourProductionConnectionString"
 ```
 
 ```bash
-# Check that the volume exists
-docker volume ls
-# Remove the sqlserver volume
-docker volume rm sqlserver
-
 docker run -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=YourStrongPassword123!' \
-  -p 1433:1433 --name sqldata \
+  -p 1433:1433 --name sqldatalocal \
   -d mcr.microsoft.com/mssql/server:2022-latest
 
 docker run -d \
-  --name rabbitmq \
+  --name rabbitmqlocal \
   -p 5672:5672 \
   -p 15672:15672 \
   rabbitmq:3-management
 
 dotnet run --project WebApi
 dotnet run --project BlazorServer
+docker-compose down
+docker-compose up --build
 
 dotnet clean
 dotnet build
@@ -83,9 +64,5 @@ dotnet build
 
 [Cmd+Shift+P] [Developer: Reload Window]
 
-// AppHost
-dotnet tool install --global aspire.cli --prerelease
-dotnet add package Aspire.Hosting.Docker --prerelease
-
-aspire publish -o docker-compose-artifacts
-docker compose up -d --build
+https://localhost:5001/
+https://localhost:7157/swagger

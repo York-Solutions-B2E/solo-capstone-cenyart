@@ -2,20 +2,26 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using RabbitMQ.Client;
 using Shared.Interfaces;
 using WebApi.Data;
 using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-if (builder.Environment.IsDevelopment())
-{
-    builder.Configuration.AddUserSecrets<Program>();
-}
+if (builder.Environment.IsDevelopment()) { builder.Configuration.AddUserSecrets<Program>(); }
+else if (builder.Environment.IsProduction()) { builder.Configuration.AddUserSecrets<Program>(); }
 
 // Database
 builder.Services.AddDbContext<CommunicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
+
+builder.Services.AddSingleton<IConnectionFactory>(sp =>
+{
+    var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit") 
+        ?? throw new InvalidOperationException("Missing RabbitMQ connection string");
+    return new ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
+});
 
 // Problem details + health checks
 builder.Services.AddProblemDetails();
@@ -68,7 +74,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = authority;
         options.Audience = audience;
-        options.RequireHttpsMetadata = true;
+        
+        // FIX: Allow HTTP metadata in development (but Authority stays HTTPS)
+        if (builder.Environment.IsDevelopment())
+        {
+            options.RequireHttpsMetadata = false;
+        }
+        else
+        {
+            options.RequireHttpsMetadata = true;
+        }
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -107,7 +122,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// FIX: Only redirect to HTTPS for external requests in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 
