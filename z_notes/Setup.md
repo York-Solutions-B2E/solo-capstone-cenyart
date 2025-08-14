@@ -7,7 +7,6 @@
 dotnet user-secrets set "Okta:OktaDomain" ""
 dotnet user-secrets set "Okta:ClientId" ""
 dotnet user-secrets set "Okta:ClientSecret" ""
-dotnet user-secrets set "Okta:AuthorizationServerId" "default"
 dotnet user-secrets set "ConnectionStrings:sqldata" "Server=localhost,1433;Database=sqldata;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=true"
 
 dotnet user-secrets list --project BlazorServer
@@ -75,7 +74,6 @@ docker run -d \
   -p 15672:15672 \
   rabbitmq:3-management
 
-dotnet run --project AppHost
 dotnet run --project WebApi
 dotnet run --project BlazorServer
 

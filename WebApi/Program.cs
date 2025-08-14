@@ -8,22 +8,18 @@ using WebApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Database
-builder.Services.AddDbContext<CommunicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
-
-// Aspire defaults
-builder.AddServiceDefaults();
-
-// Problem details + health checks
-builder.Services.AddProblemDetails();
-builder.Services.AddHealthChecks();
-
-// Load user secrets in development
 if (builder.Environment.IsDevelopment())
 {
     builder.Configuration.AddUserSecrets<Program>();
 }
+
+// Database
+builder.Services.AddDbContext<CommunicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
+
+// Problem details + health checks
+builder.Services.AddProblemDetails();
+builder.Services.AddHealthChecks();
 
 // Dependency Injection
 builder.Services
