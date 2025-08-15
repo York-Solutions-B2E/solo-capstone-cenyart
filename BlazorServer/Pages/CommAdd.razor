@@ -1,4 +1,6 @@
 @page "/commadd"
+@attribute [Authorize(Policy = "Admin")]
+@attribute [Authorize(Policy = "User")]
 @inject CommService CommService
 @inject TypeService TypeService
 @inject NavigationManager Nav

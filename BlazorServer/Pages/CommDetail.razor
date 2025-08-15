@@ -1,4 +1,6 @@
 @page "/commdetails/{Id:guid}"
+@attribute [Authorize(Policy = "Admin")]
+@attribute [Authorize(Policy = "User")]
 @inject CommService CommService
 @inject NavigationManager Nav
 

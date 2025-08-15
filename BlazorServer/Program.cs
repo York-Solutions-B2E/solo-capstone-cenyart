@@ -1,7 +1,10 @@
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using BlazorServer.Services;
 using RabbitMQ.Client;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,15 +51,14 @@ builder.Services.AddAuthentication(options =>
     options.Scope.Add("api://default");
 
     options.GetClaimsFromUserInfoEndpoint = true;
-    options.TokenValidationParameters.NameClaimType = "name";
-});
 
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("Admin", policy =>
+    // Map claims
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        policy.AuthenticationSchemes.Add(CookieAuthenticationDefaults.AuthenticationScheme);
-        policy.RequireAuthenticatedUser();
-    });
+        // NameClaimType = ClaimTypes.Name,
+        // RoleClaimType = ClaimTypes.Role
+    };
+});
 
 // Attach access token to API requests
 builder.Services.AddTransient<AccessTokenHandler>();

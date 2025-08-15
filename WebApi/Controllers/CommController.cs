@@ -11,7 +11,8 @@ namespace WebApi.Controllers
     {
         private readonly ICommService _commService = commService;
 
-        [AllowAnonymous]
+        // [Authorize(Policy = "User")]
+        // [Authorize(Policy = "Admin")]
         [HttpGet] // GET: api/comms?pageNumber=1&pageSize=10
         public async Task<IActionResult> GetCommunications([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -22,7 +23,8 @@ namespace WebApi.Controllers
             return Ok(result);
         }
 
-        [AllowAnonymous]
+        // [Authorize(Policy = "User")]
+        [Authorize(Roles = "Admin")]
         [HttpGet("{id:guid}")] // GET: api/comms/{id}
         public async Task<IActionResult> GetCommunicationById(Guid id)
         {
@@ -33,7 +35,8 @@ namespace WebApi.Controllers
             return Ok(comm);
         }
 
-        [AllowAnonymous]
+        [Authorize(Policy = "User")]
+        [Authorize(Policy = "Admin")]
         [HttpPost] // POST: api/comms
         public async Task<IActionResult> CreateCommunication([FromBody] CreateCommPayload payload)
         {

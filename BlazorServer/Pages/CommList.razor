@@ -2,61 +2,70 @@
 @inject CommService CommService
 @inject NavigationManager Nav
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Communications</h3>
-    <button class="btn btn-success" @onclick="GoToAdd">
-        + Add Communication
-    </button>
-</div>
+<AuthorizeView Roles="Admin">
+    <Authorized>
 
-@if (_loading)
-{
-    <p><em>Loading...</em></p>
-}
-else if (!_items.Any())
-{
-    <div class="alert alert-info">No communications found.</div>
-}
-else
-{
-    <table class="table table-dark table-striped">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Last Updated</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in _items)
-            {
-                <tr>
-                    <td>@c.Title</td>
-                    <td>@c.TypeCode</td>
-                    <td>@c.CurrentStatusCode</td>
-                    <td>@c.LastUpdatedUtc.ToLocalTime().ToString("g")</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" @onclick="() => GoToDetails(c.Id)">
-                            Details
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Communications</h3>
+            <button class="btn btn-success" @onclick="GoToAdd">
+                + Add Communication
+            </button>
+        </div>
 
-    <div class="d-flex justify-content-between">
-        <button class="btn btn-secondary" @onclick="Previous" disabled="@(_pageNumber == 1)">
-            &larr; Previous
-        </button>
-        <span>Page @_pageNumber of @_totalPages</span>
-        <button class="btn btn-secondary" @onclick="Next" disabled="@(_pageNumber >= _totalPages)">
-            Next &rarr;
-        </button>
-    </div>
-}
+        @if (_loading)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else if (!_items.Any())
+        {
+            <div class="alert alert-info">No communications found.</div>
+        }
+        else
+        {
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Last Updated</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in _items)
+                    {
+                        <tr>
+                            <td>@c.Title</td>
+                            <td>@c.TypeCode</td>
+                            <td>@c.CurrentStatusCode</td>
+                            <td>@c.LastUpdatedUtc.ToLocalTime().ToString("g")</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" @onclick="() => GoToDetails(c.Id)">
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="d-flex justify-content-between">
+                <button class="btn btn-secondary" @onclick="Previous" disabled="@(_pageNumber == 1)">
+                    &larr; Previous
+                </button>
+                <span>Page @_pageNumber of @_totalPages</span>
+                <button class="btn btn-secondary" @onclick="Next" disabled="@(_pageNumber >= _totalPages)">
+                    Next &rarr;
+                </button>
+            </div>
+        }
+
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning">You must log in to view communications.</div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     private int _pageNumber = 1;

@@ -11,7 +11,8 @@ public class TypeController(ITypeService typeService) : ControllerBase
 {
     private readonly ITypeService _typeService = typeService;
 
-    [AllowAnonymous]
+    [Authorize(Policy = "User")]
+    [Authorize(Policy = "Admin")]
     [HttpGet] // GET api/types
     public async Task<ActionResult<List<TypeDto>>> GetAll()
     {
@@ -19,7 +20,8 @@ public class TypeController(ITypeService typeService) : ControllerBase
         return Ok(list);
     }
 
-    [AllowAnonymous]
+    [Authorize(Policy = "User")]
+    [Authorize(Policy = "Admin")]
     [HttpGet("{typeCode}")] // GET api/types/{typeCode}
     public async Task<ActionResult<TypeDetailsDto?>> GetByCode(string typeCode)
     {

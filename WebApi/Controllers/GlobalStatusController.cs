@@ -11,6 +11,7 @@ namespace WebApi.Controllers
     {
         private readonly CommunicationDbContext _context = context;
 
+        [Authorize(Policy = "User")]
         [Authorize(Policy = "Admin")]
         [HttpGet] // GET: api/globalstatuses
         public async Task<ActionResult<List<GlobalStatus>>> GetAllGlobalStatuses()

@@ -1,0 +1,108 @@
+@page "/debug-auth"
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<DebugAuth> Logger
+
+<h3>Authorization Debug</h3>
+
+<AuthorizeView>
+    <Authorized Context="authContext">
+        <div class="alert alert-success">
+            <h5>✅ User is authenticated: @authContext.User.Identity?.Name</h5>
+            
+            <h6>Role Claims from AuthorizeView Context:</h6>
+            @foreach (var roleClaim in authContext.User.FindAll(ClaimTypes.Role))
+            {
+                <div>🔹 Role: <strong>@roleClaim.Value</strong></div>
+            }
+
+            <h6>Role Checks:</h6>
+            <div>IsInRole("Admin"): @authContext.User.IsInRole("Admin")</div>
+            <div>IsInRole("User"): @authContext.User.IsInRole("User")</div>
+            <div>IsInRole("Everyone"): @authContext.User.IsInRole("Everyone")</div>
+
+            <hr />
+
+            <h6>Test AuthorizeView with Roles:</h6>
+            
+            <div class="mb-2">
+                <strong>Test 1: Admin only</strong>
+                <AuthorizeView Roles="Admin">
+                    <Authorized>✅ Admin role works</Authorized>
+                    <NotAuthorized>❌ Admin role failed</NotAuthorized>
+                </AuthorizeView>
+            </div>
+
+            <div class="mb-2">
+                <strong>Test 2: User only</strong>
+                <AuthorizeView Roles="User">
+                    <Authorized>✅ User role works</Authorized>
+                    <NotAuthorized>❌ User role failed</NotAuthorized>
+                </AuthorizeView>
+            </div>
+
+            <div class="mb-2">
+                <strong>Test 3: Admin OR User</strong>
+                <AuthorizeView Roles="Admin,User">
+                    <Authorized>✅ Admin OR User works</Authorized>
+                    <NotAuthorized>❌ Admin OR User failed</NotAuthorized>
+                </AuthorizeView>
+            </div>
+
+            <div class="mb-2">
+                <strong>Test 4: Everyone only</strong>
+                <AuthorizeView Roles="Everyone">
+                    <Authorized>✅ Everyone role works</Authorized>
+                    <NotAuthorized>❌ Everyone role failed</NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-danger">❌ User is NOT authenticated</div>
+    </NotAuthorized>
+</AuthorizeView>
+
+<hr />
+
+<h5>Authentication State Details:</h5>
+<div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+    @if (authState != null)
+    {
+        <div><strong>IsAuthenticated:</strong> @authState.User.Identity?.IsAuthenticated</div>
+        <div><strong>Name:</strong> @authState.User.Identity?.Name</div>
+        <div><strong>AuthenticationType:</strong> @authState.User.Identity?.AuthenticationType</div>
+        
+        <h6 class="mt-3">All Claims:</h6>
+        @foreach (var claim in authState.User.Claims)
+        {
+            <div>
+                <strong>@claim.Type:</strong> @claim.Value
+                @if (claim.Type == ClaimTypes.Role)
+                {
+                    <span class="badge bg-primary ms-2">ROLE</span>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private AuthenticationState? authState;
+
+    protected override async Task OnInitializedAsync()
+    {
+        authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        
+        // Log for server-side debugging
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Logger.LogInformation("User authenticated: {Name}", authState.User.Identity.Name);
+            foreach (var claim in authState.User.FindAll(ClaimTypes.Role))
+            {
+                Logger.LogInformation("Role claim found: {Role}", claim.Value);
+            }
+        }
+    }
+}

@@ -1,4 +1,6 @@
 @page "/event-simulator"
+@attribute [Authorize(Policy = "Admin")]
+@attribute [Authorize(Policy = "User")]
 @inject CommService CommService
 @inject TypeService TypeService
 @inject RabbitMQ.Client.IConnectionFactory ConnectionFactory

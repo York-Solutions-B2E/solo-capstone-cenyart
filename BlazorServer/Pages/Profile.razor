@@ -1,4 +1,7 @@
 ﻿@page "/profile"
+@using Microsoft.AspNetCore.Authentication
+@using System.IdentityModel.Tokens.Jwt
+@inject IHttpContextAccessor HttpContextAccessor
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Profile</h3>
@@ -7,7 +10,7 @@
 <AuthorizeView>
     <Authorized Context="context">
 
-        <h5>All Claims</h5>
+        <h5>All Claims (Authentication State)</h5>
         <table class="table table-dark table-striped">
             <thead>
                 <tr>
@@ -25,9 +28,101 @@
                 }
             </tbody>
         </table>
+
+        @if (!string.IsNullOrEmpty(idToken))
+        {
+            <h5>ID Token (raw)</h5>
+            <div
+                style="max-width:100%; overflow-x:auto; white-space:pre-wrap; word-break:break-all; background-color:#222; color:#ddd; padding:10px; border-radius:5px;">
+                @idToken
+            </div>
+
+            <h5>ID Token Claims</h5>
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var claim in idClaims)
+                    {
+                        <tr>
+                            <td>@claim.Type</td>
+                            <td>@claim.Value</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (!string.IsNullOrEmpty(accessToken))
+        {
+            <h5>Access Token (raw)</h5>
+            <div
+                style="max-width:100%; overflow-x:auto; white-space:pre-wrap; word-break:break-all; background-color:#222; color:#ddd; padding:10px; border-radius:5px;">
+                @accessToken
+            </div>
+
+            <h5>Access Token Claims</h5>
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var claim in accessClaims)
+                    {
+                        <tr>
+                            <td>@claim.Type</td>
+                            <td>@claim.Value</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
     </Authorized>
 
     <NotAuthorized>
         <div class="alert alert-warning">You are not signed in!</div>
     </NotAuthorized>
 </AuthorizeView>
+
+@code {
+    private string? idToken;
+    private string? accessToken;
+    private List<System.Security.Claims.Claim> idClaims = new();
+    private List<System.Security.Claims.Claim> accessClaims = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is null)
+            return;
+
+        var authResult = await httpContext.AuthenticateAsync();
+        if (authResult?.Properties is null)
+            return;
+
+        idToken = authResult.Properties.GetTokenValue("id_token");
+        accessToken = authResult.Properties.GetTokenValue("access_token");
+
+        var handler = new JwtSecurityTokenHandler();
+
+        if (!string.IsNullOrEmpty(idToken))
+        {
+            var jwt = handler.ReadJwtToken(idToken);
+            idClaims = jwt.Claims.ToList();
+        }
+
+        if (!string.IsNullOrEmpty(accessToken))
+        {
+            var jwt = handler.ReadJwtToken(accessToken);
+            accessClaims = jwt.Claims.ToList();
+        }
+    }
+}

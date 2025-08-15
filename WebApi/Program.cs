@@ -6,6 +6,7 @@ using RabbitMQ.Client;
 using Shared.Interfaces;
 using WebApi.Data;
 using WebApi.Services;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +19,7 @@ builder.Services.AddDbContext<CommunicationDbContext>(options =>
 
 builder.Services.AddSingleton<IConnectionFactory>(sp =>
 {
-    var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit") 
+    var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit")
         ?? throw new InvalidOperationException("Missing RabbitMQ connection string");
     return new ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
 });
@@ -74,7 +75,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = authority;
         options.Audience = audience;
-        
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                var identity = context.Principal?.Identity as ClaimsIdentity;
+
+                // 🔍 Log all claims for debugging
+                foreach (var claim in context.Principal?.Claims ?? Enumerable.Empty<Claim>())
+                {
+                    Console.WriteLine($"[JWT DEBUG] ClaimType: {claim.Type}, Value: {claim.Value}");
+                }
+
+                // Map Okta "roles" claims to ASP.NET Core roles
+                var groupsClaims = context.Principal?.Claims
+                    .Where(c => c.Type == "roles")
+                    .Select(c => c.Value)
+                    .ToList();
+
+                foreach (var group in groupsClaims ?? new List<string>())
+                {
+                    identity?.AddClaim(new Claim(ClaimTypes.Role, group));
+                }
+
+                return Task.CompletedTask;
+            }
+        };
+
         // FIX: Allow HTTP metadata in development (but Authority stays HTTPS)
         if (builder.Environment.IsDevelopment())
         {
@@ -92,16 +119,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = audience,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(2)
+            ClockSkew = TimeSpan.FromMinutes(2),
+            RoleClaimType = "roles"
         };
+
+
     });
 
 // Authorization
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Admin", policy =>
     {
+        // policy.RequireAuthenticatedUser();
+        // policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+        policy.RequireRole("Admin");
+    })
+    .AddPolicy("User", policy =>
+    {
         policy.RequireAuthenticatedUser();
         policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
+        policy.RequireRole("User");
     });
 
 var app = builder.Build();
