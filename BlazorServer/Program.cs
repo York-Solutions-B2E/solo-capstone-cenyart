@@ -1,5 +1,4 @@
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using BlazorServer.Services;
@@ -55,8 +54,7 @@ builder.Services.AddAuthentication(options =>
     // Map claims
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        // NameClaimType = ClaimTypes.Name,
-        // RoleClaimType = ClaimTypes.Role
+        NameClaimType = "name"
     };
 });
 

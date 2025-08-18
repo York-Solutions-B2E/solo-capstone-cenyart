@@ -1,85 +1,95 @@
 @page "/typeedit/{TypeCode}"
-@attribute [Authorize(Policy = "Admin")]
 @inject TypeService TypeService
 @inject GlobalStatusService GlobalStatusService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
-<h3>Edit Communication Type</h3>
+<AuthorizeView Roles="Admin" Context="authContext">
+    <Authorized>
+        <h3>Edit Communication Type</h3>
 
-@if (_loading)
-{
-    <p><em>Loading...</em></p>
-}
-else if (_typeDetails == null)
-{
-    <div class="alert alert-danger">Type not found.</div>
-}
-else
-{
-    <EditForm Model="_editModel" OnValidSubmit="HandleUpdate">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
-
-        <div class="mb-3">
-            <label class="form-label">Type Code</label>
-            <InputText @bind-Value="_editModel.TypeCode" class="form-control" Disabled="true" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Display Name</label>
-            <InputText @bind-Value="_editModel.DisplayName" class="form-control" />
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Active</label>
-            @if (_typeDetails.IsActive)
-            {
-                <div><span class="badge bg-success">Active</span></div>
-            }
-            else
-            {
-                <div><span class="badge bg-secondary">Inactive</span></div>
-            }
-        </div>
-
-        <h5>Valid Statuses</h5>
-        <p class="text-muted">Check which global statuses should be valid for this type. Descriptions shown below.</p>
-
-        @if (_statusOptions?.Any() != true)
+        @if (_loading)
         {
-            <div class="alert alert-info">No global statuses available.</div>
+            <p><em>Loading...</em></p>
+        }
+        else if (_typeDetails == null)
+        {
+            <div class="alert alert-danger">Type not found.</div>
         }
         else
         {
-            <div class="mb-3">
-                @foreach (var s in _statusOptions)
+            <EditForm Model="_editModel" OnValidSubmit="HandleUpdate" Context="formContext">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">Type Code</label>
+                    <InputText @bind-Value="_editModel.TypeCode" class="form-control" Disabled="true" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Display Name</label>
+                    <InputText @bind-Value="_editModel.DisplayName" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Active</label>
+                    @if (_typeDetails.IsActive)
+                    {
+                        <div><span class="badge bg-success">Active</span></div>
+                    }
+                    else
+                    {
+                        <div><span class="badge bg-secondary">Inactive</span></div>
+                    }
+                </div>
+
+                <h5>Valid Statuses</h5>
+                <p class="text-muted">Check which global statuses should be valid for this type. Descriptions shown below.</p>
+
+                @if (_statusOptions?.Any() != true)
                 {
-                    <div class="form-check">
-                        <input
-                            class="form-check-input"
-                            type="checkbox"
-                            id="@($"chk_{s.StatusCode}")"
-                            checked="@(_checked.TryGetValue(s.StatusCode, out var val) && val)"
-                            @onchange="(ChangeEventArgs e) => OnCheckboxChanged(s.StatusCode, e?.Value is bool b && b)" />
-                        <label class="form-check-label" for="@($"chk_{s.StatusCode}")">
-                            <strong>@s.StatusCode</strong>
-                            <div class="text-muted">@s.Notes</div>
-                        </label>
+                    <div class="alert alert-info">No global statuses available.</div>
+                }
+                else
+                {
+                    <div class="mb-3">
+                        @foreach (var s in _statusOptions)
+                        {
+                            <div class="form-check">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="@($"chk_{s.StatusCode}")"
+                                    checked="@(_checked.TryGetValue(s.StatusCode, out var val) && val)"
+                                    @onchange="(ChangeEventArgs e) => OnCheckboxChanged(s.StatusCode, e?.Value is bool b && b)" />
+                                <label class="form-check-label" for="@($"chk_{s.StatusCode}")">
+                                    <strong>@s.StatusCode</strong>
+                                    <div class="text-muted">@s.Notes</div>
+                                </label>
+                            </div>
+                        }
                     </div>
                 }
-            </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn btn-secondary" @onclick="GoBack">← Back</button>
+
+                    <div>
+                        <button type="button" class="btn btn-danger me-2" @onclick="HandleDelete">Delete</button>
+                        <button type="submit" class="btn btn-primary" disabled="@(!CanUpdate)">Update</button>
+                    </div>
+                </div>
+            </EditForm>
         }
+    </Authorized>
 
-        <div class="d-flex justify-content-between mt-4">
-            <button type="button" class="btn btn-secondary" @onclick="GoBack">← Back</button>
-
-            <div>
-                <button type="button" class="btn btn-danger me-2" @onclick="HandleDelete">Delete</button>
-                <button type="submit" class="btn btn-primary" disabled="@(!CanUpdate)">Update</button>
-            </div>
+    <NotAuthorized>
+        <div class="alert alert-danger mt-3">
+            You are not authorized to view this page. Admins only.
         </div>
-    </EditForm>
-}
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     [Parameter] public string TypeCode { get; set; } = "";
@@ -87,7 +97,6 @@ else
     private TypeDetailsDto? _typeDetails;
     private bool _loading = true;
 
-    // Mutable model used by EditForm
     private class EditModel
     {
         public string TypeCode { get; set; } = "";
@@ -95,24 +104,23 @@ else
     }
 
     private EditModel _editModel = new();
-
-    // Status options come from GlobalStatusService
     private List<GlobalStatusDto> _statusOptions = new();
-
-    // Map: statusCode -> currently checked (UI)
     private Dictionary<string, bool> _checked = new();
-
-    // Original allowed statuses for this type (statusCode -> StatusDto)
     private Dictionary<string, StatusDto> _originalMap = new();
 
-    // Update enabled only when display name present (type code is required and read-only)
     private bool CanUpdate =>
         !string.IsNullOrWhiteSpace(_editModel.DisplayName) &&
         !string.IsNullOrWhiteSpace(_editModel.TypeCode);
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadTypeAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true && user.IsInRole("Admin"))
+        {
+            await LoadTypeAsync();
+        }
     }
 
     private async Task LoadTypeAsync()
@@ -121,29 +129,22 @@ else
 
         try
         {
-            // Get type details (includes ValidStatuses)
             _typeDetails = await TypeService.GetTypeByCodeAsync(TypeCode);
-
             if (_typeDetails == null)
             {
                 _loading = false;
                 return;
             }
 
-            // populate edit model
             _editModel = new EditModel
             {
                 TypeCode = _typeDetails.TypeCode,
                 DisplayName = _typeDetails.DisplayName
             };
 
-            // load all global statuses (used as options for checkboxes)
             _statusOptions = await GlobalStatusService.GetAllGlobalStatusesAsync();
 
-            // build original map of allowed statuses for this type
             _originalMap = _typeDetails.ValidStatuses.ToDictionary(s => s.StatusCode, s => s);
-
-            // initialize checked dictionary: true if originally allowed
             _checked = _statusOptions.ToDictionary(
                 s => s.StatusCode,
                 s => _originalMap.ContainsKey(s.StatusCode)
@@ -167,7 +168,6 @@ else
     {
         if (_typeDetails == null) return;
 
-        // Build full allowed statuses list from checked dictionary
         var allowed = _checked
             .Where(kv => kv.Value)
             .Select(kv => kv.Key)
@@ -176,7 +176,7 @@ else
         var updatePayload = new UpdateTypePayload(
             _editModel.TypeCode,
             _editModel.DisplayName,
-            allowed // AllowedStatusCodes
+            allowed
         );
 
         await TypeService.UpdateTypeAsync(updatePayload);

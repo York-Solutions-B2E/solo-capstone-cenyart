@@ -1,78 +1,87 @@
 @page "/event-simulator"
-@attribute [Authorize(Policy = "Admin")]
-@attribute [Authorize(Policy = "User")]
 @inject CommService CommService
 @inject TypeService TypeService
 @inject RabbitMQ.Client.IConnectionFactory ConnectionFactory
+@inject AuthenticationStateProvider AuthStateProvider
 
 @using System.Text
 @using System.Text.Json
 @using RabbitMQ.Client
 
-<h3>Event Simulator</h3>
+<AuthorizeView Roles="Admin,User" Context="authContext">
+    <Authorized>
+        <h3>Event Simulator</h3>
 
-<div class="mb-3">
-    <label class="form-label">Select Communication</label>
-    <select class="form-select"
-            @bind="_selectedCommId"
-            @bind:after="OnCommChanged">
-        <option value="">-- Select Communication --</option>
-        @foreach (var comm in _communications)
+        <div class="mb-3">
+            <label class="form-label">Select Communication</label>
+            <select class="form-select"
+                    @bind="_selectedCommId"
+                    @bind:after="OnCommChanged">
+                <option value="">-- Select Communication --</option>
+                @foreach (var comm in _communications)
+                {
+                    <option value="@comm.Id.ToString()">@comm.Title</option>
+                }
+            </select>
+
+            <div class="mt-2">
+                <button class="btn btn-secondary me-2" @onclick="PrevPage" disabled="@(_currentPage <= 1)">Prev</button>
+                <button class="btn btn-secondary" @onclick="NextPage" disabled="@(!_hasMore)">Next</button>
+                <span class="ms-2">Page @_currentPage of @_totalPages</span>
+            </div>
+        </div>
+
+        @if (_selectedCommDetails != null)
         {
-            <option value="@comm.Id.ToString()">@comm.Title</option>
+            <h5>Status History</h5>
+            <ul class="list-group mb-3">
+                @foreach (var history in _selectedCommDetails.StatusHistory.OrderBy(h => h.OccurredUtc))
+                {
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>@history.StatusCode</span>
+                        <span class="text-muted">@history.OccurredUtc.ToLocalTime()</span>
+                    </li>
+                }
+            </ul>
         }
-    </select>
 
-    <div class="mt-2">
-        <button class="btn btn-secondary me-2" @onclick="PrevPage" disabled="@(_currentPage <= 1)">Prev</button>
-        <button class="btn btn-secondary" @onclick="NextPage" disabled="@(!_hasMore)">Next</button>
-        <span class="ms-2">Page @_currentPage of @_totalPages</span>
-    </div>
-</div>
+        <div class="mb-3">
+            <label class="form-label">Select Status</label>
+            <select class="form-select"
+                    @bind="_selectedStatusCode"
+                    disabled="@(!_availableStatuses.Any())">
+                <option value="">-- Select Status --</option>
+                @foreach (var status in _availableStatuses)
+                {
+                    <option value="@status.StatusCode">@status.Description</option>
+                }
+            </select>
+        </div>
 
-@if (_selectedCommDetails != null)
-{
-    <h5>Status History</h5>
-    <ul class="list-group mb-3">
-        @foreach (var history in _selectedCommDetails.StatusHistory.OrderBy(h => h.OccurredUtc))
+        <button class="btn btn-primary"
+                @onclick="PublishEvent"
+                disabled="@(!CanPublish)">
+            Publish
+        </button>
+
+        @if (_publishLog.Any())
         {
-            <li class="list-group-item d-flex justify-content-between">
-                <span>@history.StatusCode</span>
-                <span class="text-muted">@history.OccurredUtc.ToLocalTime()</span>
-            </li>
+            <h5 class="mt-4">Publish Log</h5>
+            <ul class="list-group">
+                @foreach (var msg in _publishLog)
+                {
+                    <li class="list-group-item">@msg</li>
+                }
+            </ul>
         }
-    </ul>
-}
+    </Authorized>
 
-<div class="mb-3">
-    <label class="form-label">Select Status</label>
-    <select class="form-select"
-            @bind="_selectedStatusCode"
-            disabled="@(!_availableStatuses.Any())">
-        <option value="">-- Select Status --</option>
-        @foreach (var status in _availableStatuses)
-        {
-            <option value="@status.StatusCode">@status.Description</option>
-        }
-    </select>
-</div>
-
-<button class="btn btn-primary"
-        @onclick="PublishEvent"
-        disabled="@(!CanPublish)">
-    Publish
-</button>
-
-@if (_publishLog.Any())
-{
-    <h5 class="mt-4">Publish Log</h5>
-    <ul class="list-group">
-        @foreach (var msg in _publishLog)
-        {
-            <li class="list-group-item">@msg</li>
-        }
-    </ul>
-}
+    <NotAuthorized>
+        <div class="alert alert-warning">
+            You must log in with Admin or User role to use the Event Simulator.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     private List<CommDto> _communications = new();
@@ -96,8 +105,16 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCommunicationsAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true &&
+            (user.IsInRole("Admin") || user.IsInRole("User")))
+        {
+            await LoadCommunicationsAsync();
+        }
     }
+
 
     private async Task LoadCommunicationsAsync()
     {

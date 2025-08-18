@@ -1,58 +1,68 @@
 @page "/typelist"
-@attribute [Authorize(Policy = "Admin")]
 @inject TypeService TypeService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Types</h3>
-    <button class="btn btn-success" @onclick="GoToAdd">+ Add Type</button>
-</div>
+<AuthorizeView Roles="Admin" Context="authContext">
+    <Authorized>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Types</h3>
+            <button class="btn btn-success" @onclick="GoToAdd">+ Add Type</button>
+        </div>
 
-@if (_loading)
-{
-    <p><em>Loading...</em></p>
-}
-else if (!_types.Any())
-{
-    <div class="alert alert-info">No communication types found.</div>
-}
-else
-{
-    <table class="table table-dark table-striped">
-        <thead>
-            <tr>
-                <th>Code</th>
-                <th>Display Name</th>
-                <th>Active</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var t in _types)
-            {
-                <tr>
-                    <td>@t.TypeCode</td>
-                    <td>@t.DisplayName</td>
-                    <td>
-                        @if (t.IsActive)
-                        {
-                            <span class="badge bg-success">Yes</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">No</span>
-                        }
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-primary" @onclick="() => GoToEdit(t.TypeCode)">
-                            Edit
-                        </button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+        @if (_loading)
+        {
+            <p><em>Loading...</em></p>
+        }
+        else if (!_types.Any())
+        {
+            <div class="alert alert-info">No communication types found.</div>
+        }
+        else
+        {
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Display Name</th>
+                        <th>Active</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var t in _types)
+                    {
+                        <tr>
+                            <td>@t.TypeCode</td>
+                            <td>@t.DisplayName</td>
+                            <td>
+                                @if (t.IsActive)
+                                {
+                                    <span class="badge bg-success">Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">No</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" @onclick="() => GoToEdit(t.TypeCode)">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </Authorized>
+
+    <NotAuthorized>
+        <div class="alert alert-danger mt-3">
+            You are not authorized to view this page. Admins only.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     private List<TypeDto> _types = new();
@@ -60,9 +70,15 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _loading = true;
-        _types = (await TypeService.GetAllTypesAsync()).ToList();
-        _loading = false;
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true && user.IsInRole("Admin"))
+        {
+            _loading = true;
+            _types = (await TypeService.GetAllTypesAsync()).ToList();
+            _loading = false;
+        }
     }
 
     private void GoToAdd() => Nav.NavigateTo("/typeadd");

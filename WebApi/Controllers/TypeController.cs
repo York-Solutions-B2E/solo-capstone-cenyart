@@ -11,8 +11,7 @@ public class TypeController(ITypeService typeService) : ControllerBase
 {
     private readonly ITypeService _typeService = typeService;
 
-    [Authorize(Policy = "User")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Roles = "Admin, User")]
     [HttpGet] // GET api/types
     public async Task<ActionResult<List<TypeDto>>> GetAll()
     {
@@ -20,8 +19,7 @@ public class TypeController(ITypeService typeService) : ControllerBase
         return Ok(list);
     }
 
-    [Authorize(Policy = "User")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Roles = "Admin, User")]
     [HttpGet("{typeCode}")] // GET api/types/{typeCode}
     public async Task<ActionResult<TypeDetailsDto?>> GetByCode(string typeCode)
     {
@@ -30,7 +28,7 @@ public class TypeController(ITypeService typeService) : ControllerBase
         return Ok(dto);
     }
 
-    [Authorize(Policy = "Admin")]
+    [Authorize(Roles = "Admin")]
     [HttpPost] // POST api/types
     public async Task<IActionResult> Create([FromBody] CreateTypePayload payload)
     {
@@ -38,7 +36,7 @@ public class TypeController(ITypeService typeService) : ControllerBase
         return CreatedAtAction(nameof(GetByCode), new { typeCode = payload.TypeCode }, null);
     }
 
-    [Authorize(Policy = "Admin")]
+    [Authorize(Roles = "Admin")]
     [HttpPut("{typeCode}")] // PUT api/types/{typeCode}
     public async Task<IActionResult> UpdateTypeAsync(string typeCode, [FromBody] UpdateTypePayload payload)
     {
@@ -52,7 +50,7 @@ public class TypeController(ITypeService typeService) : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Policy = "Admin")]
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{typeCode}")] // DELETE api/types/{typeCode}
     public async Task<IActionResult> SoftDelete(string typeCode)
     {

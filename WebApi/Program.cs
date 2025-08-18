@@ -75,32 +75,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = authority;
         options.Audience = audience;
-        options.Events = new JwtBearerEvents
-        {
-            OnTokenValidated = context =>
-            {
-                var identity = context.Principal?.Identity as ClaimsIdentity;
-
-                // 🔍 Log all claims for debugging
-                foreach (var claim in context.Principal?.Claims ?? Enumerable.Empty<Claim>())
-                {
-                    Console.WriteLine($"[JWT DEBUG] ClaimType: {claim.Type}, Value: {claim.Value}");
-                }
-
-                // Map Okta "roles" claims to ASP.NET Core roles
-                var groupsClaims = context.Principal?.Claims
-                    .Where(c => c.Type == "roles")
-                    .Select(c => c.Value)
-                    .ToList();
-
-                foreach (var group in groupsClaims ?? new List<string>())
-                {
-                    identity?.AddClaim(new Claim(ClaimTypes.Role, group));
-                }
-
-                return Task.CompletedTask;
-            }
-        };
 
         // FIX: Allow HTTP metadata in development (but Authority stays HTTPS)
         if (builder.Environment.IsDevelopment())
@@ -120,24 +94,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = audience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2),
-            RoleClaimType = "roles"
+            RoleClaimType = ClaimTypes.Role
         };
-
-
     });
 
 // Authorization
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("Admin", policy =>
     {
-        // policy.RequireAuthenticatedUser();
-        // policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
         policy.RequireRole("Admin");
     })
     .AddPolicy("User", policy =>
     {
-        policy.RequireAuthenticatedUser();
-        policy.AuthenticationSchemes.Add(JwtBearerDefaults.AuthenticationScheme);
         policy.RequireRole("User");
     });
 

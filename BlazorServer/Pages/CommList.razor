@@ -1,8 +1,10 @@
 @page "/commlist"
+@using Microsoft.AspNetCore.Components.Authorization
 @inject CommService CommService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
-<AuthorizeView Roles="Admin">
+<AuthorizeView Roles="Admin,User">
     <Authorized>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -63,7 +65,7 @@
 
     </Authorized>
     <NotAuthorized>
-        <div class="alert alert-warning">You must log in to view communications.</div>
+        <div class="alert alert-warning">You must log in with Admin or User role to view communications.</div>
     </NotAuthorized>
 </AuthorizeView>
 
@@ -77,7 +79,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadPageAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true &&
+            (user.IsInRole("Admin") || user.IsInRole("User")))
+        {
+            await LoadPageAsync();
+        }
     }
 
     private async Task LoadPageAsync()

@@ -1,45 +1,56 @@
 @page "/commdetails/{Id:guid}"
-@attribute [Authorize(Policy = "Admin")]
-@attribute [Authorize(Policy = "User")]
+@using Microsoft.AspNetCore.Components.Authorization
 @inject CommService CommService
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
-<h3>Communication Details</h3>
+<AuthorizeView Roles="Admin,User">
+    <Authorized>
 
-@if (_loading)
-{
-    <p><em>Loading...</em></p>
-}
-else if (_comm == null)
-{
-    <div class="alert alert-danger">Communication not found.</div>
-}
-else
-{
-    <!-- Header Info -->
-    <div class="mb-4">
-        <h4>@_comm.Title</h4>
-        <p><strong>Type:</strong> @_comm.TypeCode</p>
-        <p><strong>Status:</strong> @_comm.CurrentStatusCode</p>
-        <p><strong>Last Updated:</strong> @_comm.LastUpdatedUtc.ToLocalTime().ToString("g")</p>
-    </div>
+        <h3>Communication Details</h3>
 
-    <!-- Timeline -->
-    <h5>Status History</h5>
-    <ul class="list-group mb-4">
-        @foreach (var h in _comm.StatusHistory.OrderBy(s => s.OccurredUtc))
+        @if (_loading)
         {
-            <li class="list-group-item d-flex justify-content-between">
-                <span>@h.StatusCode</span>
-                <span class="text-muted">@h.OccurredUtc.ToLocalTime().ToString("g")</span>
-            </li>
+            <p><em>Loading...</em></p>
         }
-    </ul>
+        else if (_comm == null)
+        {
+            <div class="alert alert-danger">Communication not found.</div>
+        }
+        else
+        {
+            <!-- Header Info -->
+            <div class="mb-4">
+                <h4>@_comm.Title</h4>
+                <p><strong>Type:</strong> @_comm.TypeCode</p>
+                <p><strong>Status:</strong> @_comm.CurrentStatusCode</p>
+                <p><strong>Last Updated:</strong> @_comm.LastUpdatedUtc.ToLocalTime().ToString("g")</p>
+            </div>
 
-    <button class="btn btn-secondary" @onclick="GoBack">
-        &larr; Back to List
-    </button>
-}
+            <!-- Timeline -->
+            <h5>Status History</h5>
+            <ul class="list-group mb-4">
+                @foreach (var h in _comm.StatusHistory.OrderBy(s => s.OccurredUtc))
+                {
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>@h.StatusCode</span>
+                        <span class="text-muted">@h.OccurredUtc.ToLocalTime().ToString("g")</span>
+                    </li>
+                }
+            </ul>
+
+            <button class="btn btn-secondary" @onclick="GoBack">
+                &larr; Back to List
+            </button>
+        }
+
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning">
+            You must log in with Admin or User role to view communication details.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
     [Parameter] public Guid Id { get; set; }
@@ -49,7 +60,18 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDetailsAsync();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true &&
+            (user.IsInRole("Admin") || user.IsInRole("User")))
+        {
+            await LoadDetailsAsync();
+        }
+        else
+        {
+            _loading = false; // skip loading if not authorized
+        }
     }
 
     private async Task LoadDetailsAsync()
