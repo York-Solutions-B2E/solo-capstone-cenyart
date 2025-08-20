@@ -23,10 +23,10 @@ dotnet sln add Shared
 
 ```zsh
 // Add Packages WebApi
-dotnet add package Okta.AspNetCore \
-&& dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0\
-&& dotnet add package Microsoft.EntityFrameworkCore.SqlServer \
-&& dotnet add package Microsoft.EntityFrameworkCore.Design
+dotnet add package Okta.AspNetCore --project WebApi
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer --version 8.0 --project WebApi
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer --project WebApi
+dotnet add package Microsoft.EntityFrameworkCore.Design --project WebApi
 dotnet add package RabbitMQ.Client --project WebApi
 
 // BlazorServer
@@ -55,14 +55,38 @@ docker run -d \
 
 dotnet run --project WebApi
 dotnet run --project BlazorServer
+
 docker-compose down
 docker-compose up --build
+https://localhost:5001/
+https://localhost:7157/swagger
 
 dotnet clean
 dotnet build
 ```
 
-[Cmd+Shift+P] [Developer: Reload Window]
+```bash
+dotnet add package HotChocolate.AspNetCore --project WebApi
+dotnet add package HotChocolate.Data --project WebApi
+dotnet add package HotChocolate.Subscriptions --project WebApi
+dotnet add package HotChocolate.AspNetCore.Authorization --project WebApi
 
-https://localhost:5001/
-https://localhost:7157/swagger
+https://localhost:7157/graphql/
+
+dotnet run --launch-profile "WebApi (Development)" --project WebApi
+dotnet run --launch-profile "WebApi (Production)" --project WebApi
+```
+
+```bash
+mkdir tests
+cd tests
+dotnet new nunit -n WebApi.Tests
+dotnet add WebApi.Tests reference ../WebApi/WebApi.csproj
+cd ..
+dotnet sln add Tests/WebApi.Tests
+dotnet add Tests/WebApi.Tests package Microsoft.AspNetCore.Mvc.Testing --version 8.0.19
+dotnet add Tests/WebApi.Tests package FluentAssertions
+dotnet add Tests/WebApi.Tests package Microsoft.EntityFrameworkCore.InMemory
+
+dotnet test
+```

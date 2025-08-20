@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using BlazorServer.Services;
 using RabbitMQ.Client;
-using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 

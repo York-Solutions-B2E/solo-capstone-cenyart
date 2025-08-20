@@ -7,37 +7,55 @@ using Shared.Interfaces;
 using WebApi.Data;
 using WebApi.Services;
 using System.Security.Claims;
+using HotChocolate.AspNetCore;
+using WebApi.GraphQL;
 
 var builder = WebApplication.CreateBuilder(args);
 
-if (builder.Environment.IsDevelopment()) { builder.Configuration.AddUserSecrets<Program>(); }
-else if (builder.Environment.IsProduction()) { builder.Configuration.AddUserSecrets<Program>(); }
-
-// Database
-builder.Services.AddDbContext<CommunicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("sqldata")));
-
-builder.Services.AddSingleton<IConnectionFactory>(sp =>
+// ---------------- User Secrets ----------------
+if (builder.Environment.IsDevelopment())
 {
-    var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit")
-        ?? throw new InvalidOperationException("Missing RabbitMQ connection string");
-    return new ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
-});
+    builder.Configuration.AddUserSecrets<Program>();
+}
 
-// Problem details + health checks
+// ---------------- Database ----------------
+// Register SQL Server only if not testing
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    var sqlConnectionString = builder.Configuration.GetConnectionString("sqldata")
+        ?? throw new InvalidOperationException("Missing SQL Server connection string: 'sqldata'");
+
+    builder.Services.AddDbContext<CommunicationDbContext>(options =>
+        options.UseSqlServer(sqlConnectionString));
+}
+
+// ---------------- RabbitMQ ----------------
+// Register real RabbitMQ only if not testing
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<IConnectionFactory>(sp =>
+    {
+        var rabbitConnectionString = builder.Configuration.GetConnectionString("rabbit")
+            ?? throw new InvalidOperationException("Missing RabbitMQ connection string");
+        return new ConnectionFactory { Uri = new Uri(rabbitConnectionString) };
+    });
+
+    builder.Services.AddHostedService<RabbitMqSubscriberService>();
+}
+
+// ---------------- Infra ----------------
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
 
-// Dependency Injection
+// ---------------- DI ----------------
 builder.Services
     .AddScoped<ICommService, CommService>()
     .AddScoped<ITypeService, TypeService>()
     .AddScoped<IGlobalStatusService, GlobalStatusService>();
 
-builder.Services.AddHostedService<RabbitMqSubscriberService>();
 builder.Services.AddControllers();
 
-// Swagger + JWT Auth
+// ---------------- Swagger + Auth ----------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -75,16 +93,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = authority;
         options.Audience = audience;
-
-        // FIX: Allow HTTP metadata in development (but Authority stays HTTPS)
-        if (builder.Environment.IsDevelopment())
-        {
-            options.RequireHttpsMetadata = false;
-        }
-        else
-        {
-            options.RequireHttpsMetadata = true;
-        }
+        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -98,37 +107,44 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Authorization
 builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("Admin", policy =>
-    {
-        policy.RequireRole("Admin");
-    })
-    .AddPolicy("User", policy =>
-    {
-        policy.RequireRole("User");
-    });
+    .AddPolicy("Admin", policy => policy.RequireRole("Admin"))
+    .AddPolicy("User", policy => policy.RequireRole("User"));
 
+// ---------------- GraphQL ----------------
+builder.Services
+    .AddGraphQLServer()
+    .AddAuthorization()
+    .AddQueryType<Query>()
+    .AddMutationType<Mutation>()
+    .AddSubscriptionType<Subscription>()
+    .AddProjections()
+    .AddFiltering()
+    .AddSorting()
+    .DisableIntrospection(!builder.Environment.IsDevelopment() &&
+                          !builder.Environment.IsEnvironment("Testing"));
+
+// ---------------- Build app ----------------
 var app = builder.Build();
 
-// Apply migrations and seed data
-using (var scope = app.Services.CreateScope())
+// ---------------- DB Migrations ----------------
+if (!builder.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CommunicationDbContext>();
     db.Database.Migrate();
     await DatabaseSeeder.SeedAsync(db);
 }
 
-// Swagger
-if (app.Environment.IsDevelopment())
+// ---------------- Middleware ----------------
+if (builder.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// FIX: Only redirect to HTTPS for external requests in production
-if (!app.Environment.IsDevelopment())
+if (!builder.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
@@ -136,7 +152,18 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGraphQL("/graphql")
+   .RequireAuthorization()
+   .WithOptions(new GraphQLServerOptions
+   {
+        Tool = { Enable = app.Environment.IsDevelopment() }
+   });
+
+// Health checks + controllers
 app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();
+
+// Make Program accessible to WebApplicationFactory
+public partial class Program { }
