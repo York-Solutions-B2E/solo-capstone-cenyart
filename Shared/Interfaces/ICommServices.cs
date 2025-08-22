@@ -6,6 +6,8 @@ public interface ICommService
 {
     Task<PaginatedResult<CommDto>> GetCommunicationsAsync(int pageNumber, int pageSize);
 
+    IQueryable<CommGraphDto> QueryCommunicationsGraph();
+
     Task<CommDetailsDto?> GetCommunicationByIdAsync(Guid id);
 
     Task<Guid> CreateCommunicationAsync(CreateCommPayload payload);

@@ -5,29 +5,28 @@ using WebApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 
-namespace WebApi.Tests;
+namespace Tests.GraphQL;
 
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public class ConfigureApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
         builder.ConfigureServices(services =>
         {
             // Add in-memory DB
             services.AddDbContext<CommunicationDbContext>(options =>
                 options.UseInMemoryDatabase("TestDb"));
 
-            // Replace auth with stub
-            services.AddAuthentication("TestScheme")
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestScheme", _ => { });
-
-            // Set default scheme so GraphQL uses stub
-            services.PostConfigure<AuthenticationOptions>(options =>
+            // Register test authentication scheme AND set it as the default auth scheme.
+            services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = "TestScheme";
                 options.DefaultChallengeScheme = "TestScheme";
-            });
+                options.DefaultScheme = "TestScheme";
+            })
+            .AddScheme<AuthenticationSchemeOptions, AuthHandler>("TestScheme", options => { });
         });
     }
 }

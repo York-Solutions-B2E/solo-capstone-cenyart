@@ -87,6 +87,7 @@ dotnet sln add Tests/WebApi.Tests
 dotnet add Tests/WebApi.Tests package Microsoft.AspNetCore.Mvc.Testing --version 8.0.19
 dotnet add Tests/WebApi.Tests package FluentAssertions
 dotnet add Tests/WebApi.Tests package Microsoft.EntityFrameworkCore.InMemory
+dotnet add Tests/WebApi.Tests package Snapshooter.NUnit
 
 dotnet test
 ```

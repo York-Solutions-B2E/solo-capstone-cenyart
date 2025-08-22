@@ -9,28 +9,44 @@ public class CommService(CommunicationDbContext context) : ICommService
 {
     private readonly CommunicationDbContext _context = context;
 
+    // ================= REST =================
     public async Task<PaginatedResult<CommDto>> GetCommunicationsAsync(int pageNumber, int pageSize)
     {
-        var query = _context.Communications
+        var baseQuery = _context.Communications
             .AsNoTracking()
-            .OrderByDescending(c => c.LastUpdatedUtc);
+            .OrderByDescending(c => c.LastUpdatedUtc)
+            .ThenBy(c => c.Id)
+            .Select(c => new CommDto(
+                c.Id,
+                c.Title,
+                c.TypeCode,
+                c.CurrentStatusCode,
+                c.LastUpdatedUtc
+            ));
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await baseQuery.CountAsync();
 
-        var items = await query
+        var items = await baseQuery
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        var dtos = items.Select(c => new CommDto(
-            c.Id,
-            c.Title,
-            c.TypeCode,
-            c.CurrentStatusCode,
-            c.LastUpdatedUtc
-        )).ToList();
+        return new PaginatedResult<CommDto>(items, totalCount, pageNumber, pageSize);
+    }
 
-        return new PaginatedResult<CommDto>(dtos, totalCount, pageNumber, pageSize);
+    // ================= GraphQL =================
+    public IQueryable<CommGraphDto> QueryCommunicationsGraph()
+    {
+        return _context.Communications
+            .AsNoTracking()
+            .Select(c => new CommGraphDto
+            {
+                Id = c.Id,
+                Title = c.Title,
+                TypeCode = c.TypeCode,
+                CurrentStatusCode = c.CurrentStatusCode,
+                LastUpdatedUtc = c.LastUpdatedUtc
+            });
     }
 
     public async Task<CommDetailsDto?> GetCommunicationByIdAsync(Guid id)

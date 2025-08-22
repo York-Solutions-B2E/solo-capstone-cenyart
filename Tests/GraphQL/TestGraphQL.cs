@@ -2,26 +2,32 @@ using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
 
-namespace WebApi.Tests;
+namespace Tests.GraphQL;
 
 [TestFixture]
-public class GraphQLTests
+public class TestGraphQL
 {
-    private CustomWebApplicationFactory _factory = null!;
+    private ConfigureApplicationFactory _factory = null!;
     private HttpClient _client = null!;
+
+    [OneTimeSetUp]
+    public void OneTimeSetUp()
+    {
+        _factory = new ConfigureApplicationFactory();
+        _client = _factory.CreateClient();
+    }
+
+    [OneTimeTearDown]
+    public void OneTimeTearDown()
+    {
+        _client.Dispose();
+        _factory.Dispose();
+    }
 
     [SetUp]
     public void SetUp()
     {
-        _factory = new CustomWebApplicationFactory();
-        _client = _factory.CreateClient();
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _client.Dispose();
-        _factory.Dispose();
+        _client.DefaultRequestHeaders.Authorization = null;
     }
 
     [Test]

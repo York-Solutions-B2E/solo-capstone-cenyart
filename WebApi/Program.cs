@@ -30,7 +30,7 @@ if (!builder.Environment.IsEnvironment("Testing"))
 }
 
 // ---------------- RabbitMQ ----------------
-// Register real RabbitMQ only if not testing
+// Register RabbitMQ only if not testing
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddSingleton<IConnectionFactory>(sp =>
@@ -93,7 +93,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = authority;
         options.Audience = audience;
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+        options.RequireHttpsMetadata = !builder.Environment.IsEnvironment("Testing");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -144,7 +144,7 @@ if (builder.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-if (!builder.Environment.IsDevelopment())
+if (!builder.Environment.IsEnvironment("Testing"))
 {
     app.UseHttpsRedirection();
 }
@@ -159,7 +159,6 @@ app.MapGraphQL("/graphql")
         Tool = { Enable = app.Environment.IsDevelopment() }
    });
 
-// Health checks + controllers
 app.MapHealthChecks("/health");
 app.MapControllers();
 
