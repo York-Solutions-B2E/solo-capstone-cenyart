@@ -91,3 +91,5 @@ dotnet add Tests/WebApi.Tests package Snapshooter.NUnit
 
 dotnet test
 ```
+
+git commit --amend -m "New commit message"

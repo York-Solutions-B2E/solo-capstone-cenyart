@@ -8,7 +8,8 @@ using WebApi.Data;
 using WebApi.Services;
 using System.Security.Claims;
 using HotChocolate.AspNetCore;
-using WebApi.GraphQL;
+using WebApi.GraphQL.User;
+using WebApi.GraphQL.Admin;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,11 +114,30 @@ builder.Services.AddAuthorizationBuilder()
 
 // ---------------- GraphQL ----------------
 builder.Services
-    .AddGraphQLServer()
+    .AddGraphQLServer("user")
     .AddAuthorization()
-    .AddQueryType<Query>()
-    .AddMutationType<Mutation>()
-    .AddSubscriptionType<Subscription>()
+    .AddQueryType(d => d.Name("Query"))
+        .AddTypeExtension<UserQuery>()
+    .AddMutationType(d => d.Name("Mutation"))
+        .AddTypeExtension<UserMutation>()
+    .AddSubscriptionType(d => d.Name("Subscription"))
+        .AddTypeExtension<UserSubscription>()
+    .AddProjections()
+    .AddFiltering()
+    .AddSorting()
+    .DisableIntrospection(!builder.Environment.IsDevelopment() &&
+                          !builder.Environment.IsEnvironment("Testing"));
+
+builder.Services
+    .AddGraphQLServer("admin")
+    .AddAuthorization()
+    .AddQueryType(d => d.Name("Query"))
+        .AddTypeExtension<UserQuery>()
+        .AddTypeExtension<AdminQuery>()
+    .AddMutationType(d => d.Name("Mutation"))
+        .AddTypeExtension<UserMutation>()
+    .AddSubscriptionType(d => d.Name("Subscription"))
+        .AddTypeExtension<UserSubscription>()
     .AddProjections()
     .AddFiltering()
     .AddSorting()
@@ -152,8 +172,15 @@ if (!builder.Environment.IsEnvironment("Testing"))
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGraphQL("/graphql")
-   .RequireAuthorization()
+app.MapGraphQL("/graphql", schemaName: "user")
+   .RequireAuthorization("User")
+   .WithOptions(new GraphQLServerOptions
+   {
+        Tool = { Enable = app.Environment.IsDevelopment() }
+   });
+
+app.MapGraphQL("/graphql/admin", schemaName: "admin")
+   .RequireAuthorization("Admin")
    .WithOptions(new GraphQLServerOptions
    {
         Tool = { Enable = app.Environment.IsDevelopment() }

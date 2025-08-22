@@ -18,7 +18,7 @@ public class TestCommPaginationHttp
 	{
 		_factory = new ConfigureApplicationFactory();
 		_client = _factory.CreateClient();
-		_client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "dummy-test-token");
+		_client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "dummy-user-token");
 
 		// Seed in-memory test data
 		using var scope = _factory.Services.CreateScope();
