@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.Authorization;
 using Shared.Dtos;
 using Shared.Interfaces;
 
-namespace WebApi.GraphQL;
+namespace WebApi.GraphQL.User;
 
-public class Query
+[ExtendObjectType("Query")]
+[Authorize(Roles = "User")]
+public class UserQuery
 {
     public string Health() => "ok";
 

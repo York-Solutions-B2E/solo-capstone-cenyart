@@ -41,7 +41,7 @@ public class TestGraphQL
     public async Task Authorized_health_query_returns_200()
     {
         _client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "dummy-test-token");
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "dummy-user-token");
 
         var response = await _client.PostAsJsonAsync("/graphql", new { query = "{ health }" });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -54,7 +54,7 @@ public class TestGraphQL
     public async Task Schema_introspection_includes_root_types()
     {
         _client.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "dummy-test-token");
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "dummy-user-token");
 
         var introspectionQuery = new
         {

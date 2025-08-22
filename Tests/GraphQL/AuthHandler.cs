@@ -14,17 +14,44 @@ public class AuthHandler(
 {
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue("Authorization", out var header))
+        // If no header -> unauthenticated (401)
+        if (!Request.Headers.TryGetValue("Authorization", out var headerValues))
         {
             return Task.FromResult(AuthenticateResult.Fail("Missing Authorization Header"));
         }
 
-        if (header != "Bearer dummy-test-token")
+        var header = headerValues.ToString().Trim();
+
+        // Expect format: "Bearer <token>"
+        if (!header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(AuthenticateResult.Fail("Invalid Authorization Header"));
+        }
+
+        var token = header.Substring("Bearer ".Length).Trim();
+        Claim[] claims;
+        
+        if (string.Equals(token, "dummy-admin-token", StringComparison.Ordinal))
+        {
+            claims =
+            [
+                new Claim(ClaimTypes.Name, "TestAdmin"),
+                new Claim(ClaimTypes.Role, "Admin"),
+            ];
+        }
+        else if (string.Equals(token, "dummy-user-token", StringComparison.Ordinal))
+        {
+            claims =
+            [
+                new Claim(ClaimTypes.Name, "TestUser"),
+                new Claim(ClaimTypes.Role, "User"),
+            ];
+        }
+        else
         {
             return Task.FromResult(AuthenticateResult.Fail("Invalid token"));
         }
 
-        var claims = new[] { new Claim(ClaimTypes.Name, "TestUser") };
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
